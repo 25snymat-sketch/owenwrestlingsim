@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owen Wrestling Simulator</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #D4AF37;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-wrapper {
+            width: 95%;
+            max-width: 500px;
+            border: 3px solid #D4AF37;
+            background: #111;
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+        }
+
+        #ui-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 15px;
+            background: #000;
+            font-size: 14px;
+            border-bottom: 2px solid #D4AF37;
+        }
+
+        #main-stage {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            background: radial-gradient(circle, #2d4a3e 60%, #162e24 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas { display: none; width: 100%; height: 100%; }
+
+        #footer {
+            background: #0a0a0a;
+            padding: 10px;
+            font-size: 12px;
+            text-align: center;
+            border-top: 1px solid #333;
+        }
+
+        .key { color: #fff; background: #444; padding: 2px 5px; border-radius: 3px; font-weight: bold; }
+
+        button {
+            padding: 12px 24px;
+            background: #D4AF37;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: scale(1.05); background: #b8972f; }
+
+        #menu { text-align: center; }
+        #game-over { display: none; text-align: center; padding: 10px; width: 100%; }
+        #game-over img { width: 80%; max-width: 250px; border: 3px solid #D4AF37; border-radius: 10px; margin-top: 10px; }
+
+        h1 { font-size: 1.5rem; margin-bottom: 20px; letter-spacing: 2px; }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <div id="ui-bar">
+        <span>Score: <b id="score">0</b></span>
+        <span id="state" class="gold-text">NEUTRAL</span>
+    </div>
+
+    <div id="main-stage">
+        <div id="menu">
+            <h1>OWEN WRESTLING</h1>
+            <button onclick="startGame()">START MATCH</button>
+        </div>
+
+        <canvas id="gameCanvas" width="500" height="350"></canvas>
+
+        <div id="game-over">
+            <h2 style="color: #ff4d4d; margin:0; font-size: 2rem;">PINNED!</h2>
+            <img src="your-gif-name.gif" alt="Funny Lose GIF">
+            <br>
+            <button onclick="startGame()" style="margin-top: 15px;">REMATCH</button>
+        </div>
+    </div>
+
+    <div id="footer">
+        <span class="key">WASD</span> Move | <span class="key">SPACE</span> Shoot Takedown
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const menu = document.getElementById('menu');
+    const gameOverScreen = document.getElementById('game-over');
+    const scoreText = document.getElementById('score');
+    const stateText = document.getElementById('state');
+
+    let player, opponent, gameActive, score, animationId;
+    const keys = {};
+
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    function startGame() {
+        menu.style.display = 'none';
+        gameOverScreen.style.display = 'none';
+        canvas.style.display = 'block';
+        
+        gameActive = true;
+        score = 0;
+        scoreText.innerText = score;
+        stateText.innerText = "NEUTRAL";
+        
+        player = { x: 100, y: 175, size: 15, speed: 4, color: '#3498db' };
+        opponent = { x: 380, y: 175, size: 15, speed: 2.5, color: '#e74c3c' };
+
+        gameLoop();
+    }
+
+    function update() {
+        if (!gameActive) return;
+
+        // Player Movement
+        if (keys['KeyW'] && player.y > player.size) player.y -= player.speed;
+        if (keys['KeyS'] && player.y < canvas.height - player.size) player.y += player.speed;
+        if (keys['KeyA'] && player.x > player.size) player.x -= player.speed;
+        if (keys['KeyD'] && player.x < canvas.width - player.size) player.x += player.speed;
+
+        // Simple AI Opponent
+        if (opponent.x > player.x) opponent.x -= opponent.speed;
+        else opponent.x += opponent.speed;
+        if (opponent.y > player.y) opponent.y -= opponent.speed;
+        else opponent.y += opponent.speed;
+
+        // Collision Check
+        let dx = player.x - opponent.x;
+        let dy = player.y - opponent.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < player.size + opponent.size) {
+            endGame();
+        }
+        
+        // Scoring (Survival)
+        score++;
+        if(score % 100 === 0) scoreText.innerText = Math.floor(score/100);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Player
+        ctx.fillStyle = player.color;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw Opponent
+        ctx.fillStyle = opponent.color;
+        ctx.beginPath();
+        ctx.arc(opponent.x, opponent.y, opponent.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function gameLoop() {
+        if (!gameActive) return;
+        update();
+        draw();
+        animationId = requestAnimationFrame(gameLoop);
+    }
+
+    function endGame() {
+        gameActive = false;
+        cancelAnimationFrame(animationId);
+        canvas.style.display = 'none';
+        gameOverScreen.style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
