@@ -153,10 +153,10 @@
     const scoreText = document.getElementById('score');
     const stateText = document.getElementById('state');
 
-    // Load Images
-    const spriteOwen = new Image(); spriteOwen.src = 'owen-sprite.png';
-    const spriteOpponent = new Image(); spriteOpponent.src = 'opponent-sprite.png';
-    const iconAlert = new Image(); iconAlert.src = 'alert-icon.png';
+    // Image setup matching your uploaded filenames
+    const spriteOwen = new Image(); spriteOwen.src = 'black_wrestler_sprite.png';
+    const spriteOpponent = new Image(); spriteOpponent.src = 'red_wrestler_sprite.png';
+    const iconAlert = new Image(); iconAlert.src = 'exclamation_sprite.png';
 
     let player, opponent, gameActive, score, animationId, aiTimer;
     const keys = {};
@@ -175,8 +175,9 @@
         scoreText.innerText = score;
         stateText.innerText = "NEUTRAL";
         
-        player = { x: 100, y: 175, size: 30, speed: 4 };
-        opponent = { x: 380, y: 175, size: 30, speed: 2, isTelegraphing: false, telegraphFrames: 0 };
+        // Character sizes increased to 50 for better visibility
+        player = { x: 100, y: 175, size: 50, speed: 4 };
+        opponent = { x: 380, y: 175, size: 50, speed: 2, isTelegraphing: false, telegraphFrames: 0 };
 
         gameLoop();
     }
@@ -190,37 +191,35 @@
         if (keys['KeyA'] && player.x > player.size/2) player.x -= player.speed;
         if (keys['KeyD'] && player.x < canvas.width - player.size/2) player.x += player.speed;
 
-        // AI Logic with Indicator
+        // AI Logic
         aiTimer++;
         if (aiTimer > 150 && !opponent.isTelegraphing) {
             opponent.isTelegraphing = true;
-            opponent.telegraphFrames = 45; // Wait before lunging
+            opponent.telegraphFrames = 45; 
             aiTimer = 0;
         }
 
         if (opponent.isTelegraphing) {
             opponent.telegraphFrames--;
             if (opponent.telegraphFrames <= 0) {
-                // Lunge
                 let angle = Math.atan2(player.y - opponent.y, player.x - opponent.x);
-                opponent.x += Math.cos(angle) * 50;
-                opponent.y += Math.sin(angle) * 50;
+                opponent.x += Math.cos(angle) * 60;
+                opponent.y += Math.sin(angle) * 60;
                 opponent.isTelegraphing = false;
             }
         } else {
-            // Normal Follow
             if (opponent.x > player.x) opponent.x -= opponent.speed;
             else opponent.x += opponent.speed;
             if (opponent.y > player.y) opponent.y -= opponent.speed;
             else opponent.y += opponent.speed;
         }
 
-        // Collision Check
+        // Collision Check (smaller hit box for precision)
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
         let distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < player.size/1.5) {
+        if (distance < 35) {
             endGame();
         }
         
@@ -231,13 +230,13 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw Characters as Sprites
+        // Draw Sprites
         ctx.drawImage(spriteOwen, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
         ctx.drawImage(spriteOpponent, opponent.x - opponent.size/2, opponent.y - opponent.size/2, opponent.size, opponent.size);
 
-        // Draw Warning Indicator
+        // Draw Warning Sprite
         if (opponent.isTelegraphing) {
-            ctx.drawImage(iconAlert, opponent.x - 12, opponent.y - 40, 24, 24);
+            ctx.drawImage(iconAlert, opponent.x - 15, opponent.y - 55, 30, 30);
         }
     }
 
