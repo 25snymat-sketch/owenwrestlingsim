@@ -97,7 +97,7 @@
 
         <div id="game-over">
             <h2 style="color: #ff4d4d; margin:0; font-size: 2rem;">PINNED!</h2>
-            <img src="your-gif-name.gif" alt="Funny Lose GIF">
+            <img src="owenthrewgif.gif" alt="Funny Lose GIF">
             <br>
             <button onclick="startGame()" style="margin-top: 15px;">REMATCH</button>
         </div>
