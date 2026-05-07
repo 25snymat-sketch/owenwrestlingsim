@@ -47,7 +47,49 @@
             align-items: center;
         }
 
-        canvas { display: none; width: 100%; height: 100%; }
+        canvas { display: none; width: 100%; height: 100%; image-rendering: pixelated; }
+
+        #game-over { 
+            display: none; 
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center; 
+            padding: 10px; 
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 20;
+        }
+
+        #game-over img { 
+            width: 95%; 
+            max-width: 450px; 
+            border: 4px solid #D4AF37; 
+            border-radius: 10px; 
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.6);
+            margin: 10px 0;
+        }
+
+        .pinned-text {
+            color: #ff4d4d; 
+            margin: 0; 
+            font-size: 2.5rem; 
+            font-weight: 900;
+            text-shadow: 2px 2px 0px #000;
+            animation: shake 0.2s infinite;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px); }
+            25% { transform: translate(-2px, -1px); }
+            50% { transform: translate(2px, 0px); }
+            75% { transform: translate(-1px, 2px); }
+            100% { transform: translate(1px, -1px); }
+        }
 
         #footer {
             background: #0a0a0a;
@@ -72,10 +114,6 @@
         }
         button:hover { transform: scale(1.05); background: #b8972f; }
 
-        #menu { text-align: center; }
-        #game-over { display: none; text-align: center; padding: 10px; width: 100%; }
-        #game-over img { width: 80%; max-width: 250px; border: 3px solid #D4AF37; border-radius: 10px; margin-top: 10px; }
-
         h1 { font-size: 1.5rem; margin-bottom: 20px; letter-spacing: 2px; }
     </style>
 </head>
@@ -96,15 +134,14 @@
         <canvas id="gameCanvas" width="500" height="350"></canvas>
 
         <div id="game-over">
-            <h2 style="color: #ff4d4d; margin:0; font-size: 2rem;">PINNED!</h2>
+            <h2 class="pinned-text">PINNED!</h2>
             <img src="owenthrewgif.gif" alt="Funny Lose GIF">
-            <br>
-            <button onclick="startGame()" style="margin-top: 15px;">REMATCH</button>
+            <button onclick="startGame()" style="margin-top: 5px;">REMATCH</button>
         </div>
     </div>
 
     <div id="footer">
-        <span class="key">WASD</span> Move | <span class="key">SPACE</span> Shoot Takedown
+        <span class="key">WASD</span> Move | <span class="key">SPACE</span> Takedown
     </div>
 </div>
 
@@ -116,7 +153,12 @@
     const scoreText = document.getElementById('score');
     const stateText = document.getElementById('state');
 
-    let player, opponent, gameActive, score, animationId;
+    // Load Images
+    const spriteOwen = new Image(); spriteOwen.src = 'owen-sprite.png';
+    const spriteOpponent = new Image(); spriteOpponent.src = 'opponent-sprite.png';
+    const iconAlert = new Image(); iconAlert.src = 'alert-icon.png';
+
+    let player, opponent, gameActive, score, animationId, aiTimer;
     const keys = {};
 
     window.addEventListener('keydown', e => keys[e.code] = true);
@@ -129,11 +171,12 @@
         
         gameActive = true;
         score = 0;
+        aiTimer = 0;
         scoreText.innerText = score;
         stateText.innerText = "NEUTRAL";
         
-        player = { x: 100, y: 175, size: 15, speed: 4, color: '#3498db' };
-        opponent = { x: 380, y: 175, size: 15, speed: 2.5, color: '#e74c3c' };
+        player = { x: 100, y: 175, size: 30, speed: 4 };
+        opponent = { x: 380, y: 175, size: 30, speed: 2, isTelegraphing: false, telegraphFrames: 0 };
 
         gameLoop();
     }
@@ -142,45 +185,60 @@
         if (!gameActive) return;
 
         // Player Movement
-        if (keys['KeyW'] && player.y > player.size) player.y -= player.speed;
-        if (keys['KeyS'] && player.y < canvas.height - player.size) player.y += player.speed;
-        if (keys['KeyA'] && player.x > player.size) player.x -= player.speed;
-        if (keys['KeyD'] && player.x < canvas.width - player.size) player.x += player.speed;
+        if (keys['KeyW'] && player.y > player.size/2) player.y -= player.speed;
+        if (keys['KeyS'] && player.y < canvas.height - player.size/2) player.y += player.speed;
+        if (keys['KeyA'] && player.x > player.size/2) player.x -= player.speed;
+        if (keys['KeyD'] && player.x < canvas.width - player.size/2) player.x += player.speed;
 
-        // Simple AI Opponent
-        if (opponent.x > player.x) opponent.x -= opponent.speed;
-        else opponent.x += opponent.speed;
-        if (opponent.y > player.y) opponent.y -= opponent.speed;
-        else opponent.y += opponent.speed;
+        // AI Logic with Indicator
+        aiTimer++;
+        if (aiTimer > 150 && !opponent.isTelegraphing) {
+            opponent.isTelegraphing = true;
+            opponent.telegraphFrames = 45; // Wait before lunging
+            aiTimer = 0;
+        }
+
+        if (opponent.isTelegraphing) {
+            opponent.telegraphFrames--;
+            if (opponent.telegraphFrames <= 0) {
+                // Lunge
+                let angle = Math.atan2(player.y - opponent.y, player.x - opponent.x);
+                opponent.x += Math.cos(angle) * 50;
+                opponent.y += Math.sin(angle) * 50;
+                opponent.isTelegraphing = false;
+            }
+        } else {
+            // Normal Follow
+            if (opponent.x > player.x) opponent.x -= opponent.speed;
+            else opponent.x += opponent.speed;
+            if (opponent.y > player.y) opponent.y -= opponent.speed;
+            else opponent.y += opponent.speed;
+        }
 
         // Collision Check
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
         let distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < player.size + opponent.size) {
+        if (distance < player.size/1.5) {
             endGame();
         }
         
-        // Scoring (Survival)
         score++;
-        if(score % 100 === 0) scoreText.innerText = Math.floor(score/100);
+        if(score % 60 === 0) scoreText.innerText = Math.floor(score/60);
     }
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw Player
-        ctx.fillStyle = player.color;
-        ctx.beginPath();
-        ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
-        ctx.fill();
+        // Draw Characters as Sprites
+        ctx.drawImage(spriteOwen, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
+        ctx.drawImage(spriteOpponent, opponent.x - opponent.size/2, opponent.y - opponent.size/2, opponent.size, opponent.size);
 
-        // Draw Opponent
-        ctx.fillStyle = opponent.color;
-        ctx.beginPath();
-        ctx.arc(opponent.x, opponent.y, opponent.size, 0, Math.PI * 2);
-        ctx.fill();
+        // Draw Warning Indicator
+        if (opponent.isTelegraphing) {
+            ctx.drawImage(iconAlert, opponent.x - 12, opponent.y - 40, 24, 24);
+        }
     }
 
     function gameLoop() {
@@ -194,7 +252,7 @@
         gameActive = false;
         cancelAnimationFrame(animationId);
         canvas.style.display = 'none';
-        gameOverScreen.style.display = 'block';
+        gameOverScreen.style.display = 'flex';
     }
 </script>
 
