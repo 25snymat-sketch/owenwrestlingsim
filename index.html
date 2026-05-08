@@ -6,7 +6,7 @@
     <title>Owen Wrestling Simulator</title>
     <style>
         body {
-            background-color: #1a1a1a;
+            background-color: #000;
             color: #D4AF37;
             font-family: 'Segoe UI', sans-serif;
             margin: 0;
@@ -20,12 +20,12 @@
         #game-wrapper {
             width: 95%;
             max-width: 500px;
-            border: 3px solid #D4AF37;
+            border: 4px solid #333;
             background: #111;
             position: relative;
             border-radius: 15px;
             overflow: hidden;
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+            box-shadow: 0 0 30px rgba(178, 34, 34, 0.4);
         }
 
         #ui-bar {
@@ -34,14 +34,14 @@
             padding: 10px 15px;
             background: #000;
             font-size: 14px;
-            border-bottom: 2px solid #D4AF37;
+            border-bottom: 3px solid #b22222;
         }
 
         #main-stage {
             position: relative;
             width: 100%;
             height: 350px;
-            background: #b22222; /* Mat Red */
+            background: #b22222; /* Deep Red Mat */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -62,8 +62,8 @@
         }
 
         #mash-box {
-            background: #222;
-            border: 4px solid #ff4d4d;
+            background: #111;
+            border: 4px solid #fff;
             padding: 20px;
             text-align: center;
             border-radius: 10px;
@@ -75,13 +75,14 @@
             top: 50px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255, 0, 0, 0.8);
-            color: white;
+            background: rgba(255, 255, 255, 0.9);
+            color: #b22222;
             padding: 5px 15px;
             border-radius: 5px;
             font-weight: bold;
             display: none;
             z-index: 5;
+            border: 2px solid #000;
         }
 
         @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
@@ -92,14 +93,14 @@
             position: absolute; top: 0; left: 0; z-index: 20;
         }
 
-        #game-over img { width: 95%; max-width: 450px; border: 4px solid #D4AF37; border-radius: 10px; margin: 10px 0; }
-        .pinned-text { color: #ff4d4d; margin: 0; font-size: 2.5rem; font-weight: 900; text-shadow: 2px 2px 0px #000; }
+        #game-over img { width: 95%; max-width: 450px; border: 4px solid #fff; border-radius: 10px; margin: 10px 0; }
+        .pinned-text { color: #fff; margin: 0; font-size: 2.5rem; font-weight: 900; text-shadow: 2px 2px 0px #b22222; }
 
         #footer {
-            background: #0a0a0a; padding: 10px; font-size: 11px; text-align: center; border-top: 1px solid #333; line-height: 1.5;
+            background: #000; padding: 10px; font-size: 11px; text-align: center; border-top: 1px solid #333; line-height: 1.5; color: #eee;
         }
-        .key { color: #fff; background: #444; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
-        button { padding: 12px 24px; background: #D4AF37; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
+        .key { color: #000; background: #fff; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
+        button { padding: 12px 24px; background: #fff; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -107,15 +108,15 @@
 <div id="game-wrapper">
     <div id="ui-bar">
         <span>Score: <b id="score">0</b></span>
-        <span id="stall-indicator" style="color: #ff4d4d;"></span>
-        <span id="state">NEUTRAL</span>
+        <span id="stall-indicator" style="color: #fff;"></span>
+        <span id="state" style="color: #fff;">NEUTRAL</span>
     </div>
 
     <div id="main-stage">
         <div id="stall-warning">STALLING WARNING!</div>
         
         <div id="menu">
-            <h1 style="text-align:center;">OWEN WRESTLING</h1>
+            <h1 style="text-align:center; color: #fff;">OWEN WRESTLING</h1>
             <button onclick="startGame()">START MATCH</button>
         </div>
 
@@ -123,9 +124,9 @@
 
         <div id="struggle-overlay">
             <div id="mash-box">
-                <h3 style="margin: 0; color: #ff4d4d;">NEAR FALL!</h3>
+                <h3 style="margin: 0; color: #fff;">NEAR FALL!</h3>
                 <p id="timer-display" style="color: #fff; margin: 5px 0;">Escape in: 10s</p>
-                <div style="font-size: 2rem; font-weight: bold;">
+                <div style="font-size: 2rem; font-weight: bold; color: #fff;">
                     <span id="current-mashes">0</span> / <span id="target-mashes">?</span>
                 </div>
                 <p style="font-size: 10px; color: #aaa; margin-top: 10px;">MASH SPACE</p>
@@ -134,14 +135,14 @@
 
         <div id="game-over">
             <h2 id="death-reason" class="pinned-text">1-2-3! PINNED!</h2>
-            <img id="lose-gif" src="owenthrewgif.gif" alt="Funny Lose GIF">
+            <img id="lose-gif" src="owenthrewgif.gif" alt="Lose GIF">
             <button onclick="startGame()" style="margin-top: 5px;">REMATCH</button>
         </div>
     </div>
 
     <div id="footer">
-        <span class="key">WASD</span> Move | <span class="key">E</span> Lunge | <span class="key">H</span> Sprawl (5s Cooldown)<br>
-        Score increases over time. Getting caught in a Near Fall costs points!
+        <span class="key">WASD</span> Move | <span class="key">E</span> Lunge | <span class="key">H</span> Sprawl<br>
+        Lunge while inside the <b style="color: white;">White Circle</b> to score a Takedown!
     </div>
 </div>
 
@@ -205,18 +206,23 @@
         isLunging = false;
         score = 0;
         aiTimer = 0;
-        stallTimer = 0;
-        stallCalls = 0;
+        resetStall();
         sprawlCooldown = 0;
         invincibilityFrames = 0;
-        stallIndicator.innerText = "";
         scoreText.innerText = score;
         stateText.innerText = "NEUTRAL";
         
-        player = { x: 100, y: 175, size: 50, speed: 4 };
+        player = { x: 100, y: 175, size: 50, speed: 4, lungeRange: 85 };
         opponent = { x: 380, y: 175, size: 50, speed: 2.2, isTelegraphing: false, telegraphFrames: 0 };
 
         gameLoop();
+    }
+
+    function resetStall() {
+        stallTimer = 0;
+        stallCalls = 0;
+        stallIndicator.innerText = "";
+        stallWarningUI.style.display = 'none';
     }
 
     function attemptLunge() {
@@ -224,23 +230,24 @@
         let dy = player.y - opponent.y;
         let dist = Math.sqrt(dx*dx + dy*dy);
         
-        if (dist < 85 && !opponent.isTelegraphing) {
+        if (dist < player.lungeRange && !opponent.isTelegraphing) {
             // SUCCESSFUL TAKEDOWN
             isLunging = false; 
             invincibilityFrames = 60; 
             stateText.innerText = "TAKEDOWN!";
             
+            // CRITICAL: Reset stall on success
+            resetStall();
+            
             opponent.x += (opponent.x > player.x) ? 150 : -150;
-            player.x += (player.x > opponent.x) ? -20 : 20; 
             opponent.x = Math.max(50, Math.min(canvas.width - 50, opponent.x));
             
             setTimeout(() => { if(gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
             return; 
         } else {
-            // START LUNGE DASH
             isLunging = true;
             lungeTimer = 15;
-            
+            // If you lunge from too far or while they telegraph, you risk getting caught
             if (dist < 50 && opponent.isTelegraphing) {
                 startStruggle();
             }
@@ -254,10 +261,10 @@
         isLunging = false;
         currentMashes = 0;
         spaceReleased = true;
-        targetMashes = Math.floor(Math.random() * 30) + 15;
+        targetMashes = Math.floor(Math.random() * 25) + 15;
         struggleTimer = 600; 
         
-        score -= 420; 
+        score -= 400; 
         if (score < 0) score = 0;
         scoreText.innerText = Math.floor(score/60);
 
@@ -274,7 +281,7 @@
             stateText.innerText = "NEUTRAL";
             opponent.x += (opponent.x > player.x) ? 120 : -120;
             invincibilityFrames = 60; 
-            stallTimer = 0;
+            resetStall();
         } else {
             endGame("1-2-3! PINNED!");
         }
@@ -290,11 +297,10 @@
             return;
         }
 
-        // 1. UPDATE TIMERS
         if (sprawlCooldown > 0) sprawlCooldown--;
         if (invincibilityFrames > 0) invincibilityFrames--;
 
-        // 2. MOVEMENT
+        // MOVEMENT Logic
         if (isLunging) {
             let angle = Math.atan2(opponent.y - player.y, opponent.x - player.x);
             player.x += Math.cos(angle) * 12;
@@ -308,7 +314,7 @@
             if (keys['KeyD'] && player.x < canvas.width - 25) player.x += player.speed;
         }
 
-        // 3. AI
+        // AI Logic
         aiTimer++;
         if (aiTimer > 150 && !opponent.isTelegraphing) {
             opponent.isTelegraphing = true;
@@ -329,16 +335,16 @@
             opponent.y += (player.y - opponent.y) / 60;
         }
 
-        // 4. COLLISION (PRIORITY CHECK)
+        // COLLISION
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
         let dist = Math.sqrt(dx*dx + dy*dy);
 
         if (dist < 35 && invincibilityFrames <= 0 && !isLunging) {
             if (keys['KeyH'] && sprawlCooldown <= 0) {
-                opponent.x += (opponent.x > player.x) ? 70 : -70;
+                opponent.x += (opponent.x > player.x) ? 75 : -75;
                 sprawlCooldown = 300; 
-                invincibilityFrames = 30;
+                invincibilityFrames = 35;
                 stallTimer = 0; 
             } 
             else {
@@ -346,7 +352,7 @@
             }
         }
 
-        // STALL LOGIC
+        // STALL CHECKING
         stallTimer++;
         if (stallTimer > 900) { 
             stallCalls++;
@@ -366,26 +372,34 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // DRAW RED MAT
+        // MAT
         ctx.fillStyle = "#b22222";
         ctx.fillRect(0,0, canvas.width, canvas.height);
         
-        // DRAW WHITE MARKINGS
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
-        ctx.lineWidth = 8;
+        // MARKINGS
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.lineWidth = 6;
         ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 160, 0, Math.PI*2); ctx.stroke();
-        ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI*2); ctx.stroke();
+
+        // LUNGE RANGE CIRCLE
+        if (!isStruggling && gameActive) {
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath(); ctx.arc(player.x, player.y, player.lungeRange, 0, Math.PI*2); ctx.stroke();
+            ctx.setLineDash([]);
+        }
 
         if (invincibilityFrames % 10 < 5) {
             ctx.drawImage(spriteOwen, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
         }
 
         if (sprawlCooldown > 0) {
-            ctx.fillStyle = "#444";
-            ctx.fillRect(player.x - 20, player.y - 40, 40, 5);
-            ctx.fillStyle = "#00ffff";
-            ctx.fillRect(player.x - 20, player.y - 40, (sprawlCooldown / 300) * 40, 5);
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(player.x - 20, player.y - 40, 40, 4);
+            ctx.fillStyle = "#000";
+            ctx.fillRect(player.x - 20, player.y - 40, (sprawlCooldown / 300) * 40, 4);
         }
 
         ctx.drawImage(spriteOpponent, opponent.x - opponent.size/2, opponent.y - opponent.size/2, opponent.size, opponent.size);
@@ -395,7 +409,7 @@
         }
         
         if (keys['KeyH'] && sprawlCooldown <= 0) {
-            ctx.strokeStyle = "#00ffff";
+            ctx.strokeStyle = "#fff";
             ctx.lineWidth = 3;
             ctx.beginPath(); ctx.arc(player.x, player.y, 35, 0, Math.PI*2); ctx.stroke();
         }
