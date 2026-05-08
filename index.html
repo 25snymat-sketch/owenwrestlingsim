@@ -317,6 +317,11 @@ let sprawlCooldown = 0;
 let invincibilityFrames = 0;
 let baitCooldown = 0;
 let diffMult = 1.0;
+
+// CONSTANTS FOR BALANCE
+const STATIC_SHOT_RANGE = 85; 
+const MIN_AI_ATTACK_DELAY = 100; // AI must wait at least ~1.6s between attacks
+
 const keys = {};
 
 window.addEventListener('keydown', e => {
@@ -379,7 +384,7 @@ function startGame() {
         y: 175, 
         size: 50, 
         speed: 2.2, 
-        shotRange: 85, 
+        shotRange: STATIC_SHOT_RANGE, 
         isTelegraphing: false, 
         telegraphFrames: 0 
     };
@@ -446,7 +451,8 @@ function update() {
         return;
     }
 
-    diffMult = 1.0 + (Math.floor(score / 1200) * 0.15);
+    // SPEED SCALING CAP
+    diffMult = Math.min(2.5, 1.0 + (Math.floor(score / 1200) * 0.15));
     difficultyText.innerText = `Lvl ${Math.floor(score / 1200) + 1}`;
 
     if (sprawlCooldown > 0) sprawlCooldown--;
@@ -466,10 +472,14 @@ function update() {
         if (keys['KeyD'] && player.x < canvas.width - 25) player.x += player.speed;
     }
 
+    // AI BRAIN - FREQUENCY CONTROL
     aiTimer++;
-    if (aiTimer > (150 / diffMult) && !opponent.isTelegraphing) {
+    let attackThreshold = Math.max(MIN_AI_ATTACK_DELAY, 180 / diffMult);
+
+    if (aiTimer > attackThreshold && !opponent.isTelegraphing) {
         opponent.isTelegraphing = true;
-        opponent.telegraphFrames = Math.max(20, 45 - (diffMult * 2));
+        // Keep telegraph frames at a reactable minimum
+        opponent.telegraphFrames = Math.max(25, 45 - (diffMult * 3));
         aiTimer = 0;
     }
 
@@ -480,7 +490,8 @@ function update() {
             let dy = player.y - opponent.y;
             let dist = Math.sqrt(dx*dx + dy*dy);
 
-            if (dist <= opponent.shotRange) {
+            // USE STATIC SHOT RANGE
+            if (dist <= STATIC_SHOT_RANGE) {
                 let angle = Math.atan2(dy, dx);
                 let stopDistance = 30;
                 opponent.x = player.x - Math.cos(angle) * stopDistance;
@@ -499,6 +510,8 @@ function update() {
                 }
             } else {
                 stateText.innerText = "OPPONENT MISSED!";
+                // PUNISH AI FOR MISSING (gives player more time to shoot)
+                aiTimer = -60; 
                 setTimeout(() => { if(gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
             }
             opponent.isTelegraphing = false;
