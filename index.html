@@ -278,7 +278,6 @@
             stateText.innerText = "TAKEDOWN!";
             stallTimer = 0;
 
-            // Score +3 (180 frames)
             score += 180;
             scoreText.innerText = Math.floor(score/60);
             triggerScorePop(3, true);
@@ -291,7 +290,6 @@
         } else {
             isTakingShot = true;
             shotTimer = 15;
-            if (dist < 50 && opponent.isTelegraphing) startStruggle();
         }
     }
 
@@ -308,7 +306,6 @@
         
         struggleTimer = Math.max(200, 600 - (diffMult * 20)); 
         
-        // Score -3 (180 frames)
         score = Math.max(0, score - 180);
         scoreText.innerText = Math.floor(score/60);
         triggerScorePop(-3, false);
@@ -375,6 +372,22 @@
                 opponent.x += Math.cos(angle) * (100 * diffMult);
                 opponent.y += Math.sin(angle) * (100 * diffMult);
                 opponent.isTelegraphing = false;
+
+                // ACTIVE COLLISION CHECK: Did he hit you with his shot?
+                let postDx = player.x - opponent.x;
+                let postDy = player.y - opponent.y;
+                let postDist = Math.sqrt(postDx*postDx + postDy*postDy);
+
+                if (postDist < 45 && invincibilityFrames <= 0) {
+                    if (keys['KeyH'] && sprawlCooldown <= 0) {
+                        opponent.x += (opponent.x > player.x) ? 75 : -75;
+                        sprawlCooldown = 300; 
+                        invincibilityFrames = 35;
+                        stallTimer = 0; 
+                    } else {
+                        startStruggle();
+                    }
+                }
             }
         } else {
             opponent.x += (player.x - opponent.x) / (60 / diffMult);
