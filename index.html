@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Owen Wrestling Simulator</title>
+    <title>Owen Wrestling Simulator - Pro Edition</title>
     <style>
         body {
             background-color: #000;
@@ -41,7 +41,7 @@
             position: relative;
             width: 100%;
             height: 350px;
-            background: #b22222; /* Deep Red Mat */
+            background: #b22222;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -141,8 +141,8 @@
     </div>
 
     <div id="footer">
-        <span class="key">WASD</span> Move | <span class="key">E</span> Lunge | <span class="key">H</span> Sprawl<br>
-        Lunge while inside the <b style="color: white;">White Circle</b> to score a Takedown!
+        <span class="key">WASD</span> Move | <span class="key">E</span> Shot | <span class="key">H</span> Sprawl<br>
+        Take a <b>Shot</b> within <b>White Circle</b> to score. Don't let him past your <b>Sprawl Circle!</b>
     </div>
 </div>
 
@@ -167,7 +167,7 @@
 
     let player, opponent, gameActive, score, animationId, aiTimer;
     let isStruggling = false, currentMashes = 0, targetMashes = 0, struggleTimer = 600;
-    let spaceReleased = true, isLunging = false, lungeTimer = 0;
+    let spaceReleased = true, isTakingShot = false, shotTimer = 0;
     
     let stallTimer = 0, stallCalls = 0;
     let sprawlCooldown = 0; 
@@ -183,8 +183,8 @@
                 currentMashText.innerText = currentMashes;
                 if (currentMashes >= targetMashes) endStruggle(true);
             }
-            if (e.code === 'KeyE' && !isStruggling && !isLunging && gameActive) {
-                attemptLunge();
+            if (e.code === 'KeyE' && !isStruggling && !isTakingShot && gameActive) {
+                attemptShot();
             }
         }
         keys[e.code] = true;
@@ -203,7 +203,7 @@
         
         gameActive = true;
         isStruggling = false;
-        isLunging = false;
+        isTakingShot = false;
         score = 0;
         aiTimer = 0;
         resetStall();
@@ -212,8 +212,8 @@
         scoreText.innerText = score;
         stateText.innerText = "NEUTRAL";
         
-        player = { x: 100, y: 175, size: 50, speed: 4, lungeRange: 85 };
-        opponent = { x: 380, y: 175, size: 50, speed: 2.2, isTelegraphing: false, telegraphFrames: 0 };
+        player = { x: 100, y: 175, size: 50, speed: 4, shotRange: 85, sprawlRadius: 28 };
+        opponent = { x: 380, y: 175, size: 50, speed: 2.3, isTelegraphing: false, telegraphFrames: 0 };
 
         gameLoop();
     }
@@ -225,18 +225,16 @@
         stallWarningUI.style.display = 'none';
     }
 
-    function attemptLunge() {
+    function attemptShot() {
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
         let dist = Math.sqrt(dx*dx + dy*dy);
         
-        if (dist < player.lungeRange && !opponent.isTelegraphing) {
-            // SUCCESSFUL TAKEDOWN
-            isLunging = false; 
+        // Successful Takedown (Only if within range and they aren't attacking)
+        if (dist < player.shotRange && !opponent.isTelegraphing) {
+            isTakingShot = false; 
             invincibilityFrames = 60; 
             stateText.innerText = "TAKEDOWN!";
-            
-            // CRITICAL: Reset stall on success
             resetStall();
             
             opponent.x += (opponent.x > player.x) ? 150 : -150;
@@ -245,23 +243,23 @@
             setTimeout(() => { if(gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
             return; 
         } else {
-            isLunging = true;
-            lungeTimer = 15;
-            // If you lunge from too far or while they telegraph, you risk getting caught
-            if (dist < 50 && opponent.isTelegraphing) {
+            isTakingShot = true;
+            shotTimer = 15;
+            // If you shoot right into them while they are ready
+            if (dist < player.sprawlRadius && opponent.isTelegraphing) {
                 startStruggle();
             }
         }
     }
 
     function startStruggle() {
-        if (invincibilityFrames > 0 || !gameActive) return;
+        if (invincibilityFrames > 0 || !gameActive || isStruggling) return;
 
         isStruggling = true;
-        isLunging = false;
+        isTakingShot = false;
         currentMashes = 0;
         spaceReleased = true;
-        targetMashes = Math.floor(Math.random() * 25) + 15;
+        targetMashes = Math.floor(Math.random() * 20) + 12;
         struggleTimer = 600; 
         
         score -= 400; 
@@ -300,13 +298,13 @@
         if (sprawlCooldown > 0) sprawlCooldown--;
         if (invincibilityFrames > 0) invincibilityFrames--;
 
-        // MOVEMENT Logic
-        if (isLunging) {
+        // Movement
+        if (isTakingShot) {
             let angle = Math.atan2(opponent.y - player.y, opponent.x - player.x);
             player.x += Math.cos(angle) * 12;
             player.y += Math.sin(angle) * 12;
-            lungeTimer--;
-            if (lungeTimer <= 0) isLunging = false;
+            shotTimer--;
+            if (shotTimer <= 0) isTakingShot = false;
         } else {
             if (keys['KeyW'] && player.y > 25) player.y -= player.speed;
             if (keys['KeyS'] && player.y < canvas.height - 25) player.y += player.speed;
@@ -316,9 +314,9 @@
 
         // AI Logic
         aiTimer++;
-        if (aiTimer > 150 && !opponent.isTelegraphing) {
+        if (aiTimer > 140 && !opponent.isTelegraphing) {
             opponent.isTelegraphing = true;
-            opponent.telegraphFrames = 50; 
+            opponent.telegraphFrames = 45; 
             aiTimer = 0;
         }
 
@@ -326,25 +324,27 @@
             opponent.telegraphFrames--;
             if (opponent.telegraphFrames <= 0) {
                 let angle = Math.atan2(player.y - opponent.y, player.x - opponent.x);
-                opponent.x += Math.cos(angle) * 90;
-                opponent.y += Math.sin(angle) * 90;
+                opponent.x += Math.cos(angle) * 100;
+                opponent.y += Math.sin(angle) * 100;
                 opponent.isTelegraphing = false;
             }
         } else {
-            opponent.x += (player.x - opponent.x) / 60;
-            opponent.y += (player.y - opponent.y) / 60;
+            opponent.x += (player.x - opponent.x) / 55;
+            opponent.y += (player.y - opponent.y) / 55;
         }
 
-        // COLLISION
+        // PHYSICAL COLLISION CHECK
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
         let dist = Math.sqrt(dx*dx + dy*dy);
 
-        if (dist < 35 && invincibilityFrames <= 0 && !isLunging) {
+        // Only trigger if he gets INSIDE your personal sprawl radius
+        if (dist < player.sprawlRadius && invincibilityFrames <= 0 && !isTakingShot) {
             if (keys['KeyH'] && sprawlCooldown <= 0) {
-                opponent.x += (opponent.x > player.x) ? 75 : -75;
-                sprawlCooldown = 300; 
-                invincibilityFrames = 35;
+                // Successful Sprawl
+                opponent.x += (opponent.x > player.x) ? 85 : -85;
+                sprawlCooldown = 240; 
+                invincibilityFrames = 40;
                 stallTimer = 0; 
             } 
             else {
@@ -352,7 +352,7 @@
             }
         }
 
-        // STALL CHECKING
+        // Stall Check
         stallTimer++;
         if (stallTimer > 900) { 
             stallCalls++;
@@ -372,66 +372,42 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // MAT
+        // Mat
         ctx.fillStyle = "#b22222";
         ctx.fillRect(0,0, canvas.width, canvas.height);
         
-        // MARKINGS
+        // Lines
         ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
         ctx.lineWidth = 6;
         ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 160, 0, Math.PI*2); ctx.stroke();
         ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI*2); ctx.stroke();
 
-        // LUNGE RANGE CIRCLE
+        // Rings
         if (!isStruggling && gameActive) {
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-            ctx.lineWidth = 2;
+            // Shot Range
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+            ctx.lineWidth = 1;
             ctx.setLineDash([5, 5]);
-            ctx.beginPath(); ctx.arc(player.x, player.y, player.lungeRange, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(player.x, player.y, player.shotRange, 0, Math.PI*2); ctx.stroke();
+            
+            // Physical Sprawl Circle
             ctx.setLineDash([]);
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.3)";
+            ctx.beginPath(); ctx.arc(player.x, player.y, player.sprawlRadius, 0, Math.PI*2); ctx.stroke();
         }
 
+        // Player
         if (invincibilityFrames % 10 < 5) {
             ctx.drawImage(spriteOwen, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
         }
 
+        // Sprawl Cooldown Bar
         if (sprawlCooldown > 0) {
-            ctx.fillStyle = "#fff";
+            ctx.fillStyle = "#444";
             ctx.fillRect(player.x - 20, player.y - 40, 40, 4);
-            ctx.fillStyle = "#000";
-            ctx.fillRect(player.x - 20, player.y - 40, (sprawlCooldown / 300) * 40, 4);
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(player.x - 20, player.y - 40, (sprawlCooldown / 240) * 40, 4);
         }
 
-        ctx.drawImage(spriteOpponent, opponent.x - opponent.size/2, opponent.y - opponent.size/2, opponent.size, opponent.size);
-
-        if (opponent.isTelegraphing) {
-            ctx.drawImage(iconAlert, opponent.x - 15, opponent.y - 55, 30, 30);
-        }
-        
-        if (keys['KeyH'] && sprawlCooldown <= 0) {
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(player.x, player.y, 35, 0, Math.PI*2); ctx.stroke();
-        }
-    }
-
-    function gameLoop() {
-        if (!gameActive) return;
-        update();
-        draw();
-        animationId = requestAnimationFrame(gameLoop);
-    }
-
-    function endGame(reason) {
-        gameActive = false;
-        cancelAnimationFrame(animationId);
-        canvas.style.display = 'none';
-        struggleOverlay.style.display = 'none';
-        document.getElementById('death-reason').innerText = reason;
-        loseGif.src = "owenthrewgif.gif?t=" + new Date().getTime();
-        gameOverScreen.style.display = 'flex';
-    }
-</script>
-
-</body>
-</html>
+        // Opponent
+        ctx.drawImage(spriteOpponent, opponent.x - opponent.size/2
