@@ -168,7 +168,7 @@
     let isStruggling = false, currentMashes = 0, targetMashes = 0, struggleTimer = 600;
     let spaceReleased = true, isLunging = false, lungeTimer = 0;
     
-    let stallTimer = 0, stallCalls = 0, lastActionScore = 0;
+    let stallTimer = 0, stallCalls = 0;
     let sprawlCooldown = 0; 
     let invincibilityFrames = 0;
 
@@ -209,7 +209,6 @@
         stallCalls = 0;
         sprawlCooldown = 0;
         invincibilityFrames = 0;
-        lastActionScore = 0;
         stallIndicator.innerText = "";
         scoreText.innerText = score;
         stateText.innerText = "NEUTRAL";
@@ -224,21 +223,29 @@
         isLunging = true;
         lungeTimer = 15;
         
-        // Counter-clinch logic
-        if (opponent.isTelegraphing) {
-            startStruggle();
-            return;
-        }
-
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
         let dist = Math.sqrt(dx*dx + dy*dy);
         
-        if (dist < 80) {
-            opponent.x += (opponent.x > player.x) ? 150 : -150;
-            invincibilityFrames = 60; // 1s protect
+        // SUCCESSFUL TAKEDOWN CONDITION
+        if (dist < 85 && !opponent.isTelegraphing) {
+            invincibilityFrames = 60; // 1s of safety
             stateText.innerText = "TAKEDOWN!";
+            
+            // Reset positions to create clean break
+            opponent.x += (opponent.x > player.x) ? 150 : -150;
+            player.x += (player.x > opponent.x) ? -20 : 20; 
+            
+            // Bound check to keep opponent on screen
+            opponent.x = Math.max(50, Math.min(canvas.width - 50, opponent.x));
+            
             setTimeout(() => { if(gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
+            return; 
+        }
+        
+        // COUNTER-CLINCH (If you dive into his attack)
+        if (dist < 50 && opponent.isTelegraphing) {
+            startStruggle();
         }
     }
 
@@ -251,10 +258,9 @@
         targetMashes = Math.floor(Math.random() * 30) + 15;
         struggleTimer = 600; 
         
-        // REVERTED SCORING PENALTY
-        score -= 7;
+        score -= 420; // Correct penalty for time-based score
         if (score < 0) score = 0;
-        scoreText.innerText = Math.floor(score/60); // Match time-based UI
+        scoreText.innerText = Math.floor(score/60);
 
         currentMashText.innerText = currentMashes;
         targetMashText.innerText = targetMashes;
@@ -301,21 +307,21 @@
             }
         }
 
+        // Movement Logic
         if (isLunging) {
             let angle = Math.atan2(opponent.y - player.y, opponent.x - player.x);
             player.x += Math.cos(angle) * 12;
             player.y += Math.sin(angle) * 12;
             lungeTimer--;
             if (lungeTimer <= 0) isLunging = false;
-        }
-
-        if (!isLunging) {
+        } else {
             if (keys['KeyW'] && player.y > 25) player.y -= player.speed;
             if (keys['KeyS'] && player.y < canvas.height - 25) player.y += player.speed;
             if (keys['KeyA'] && player.x > 25) player.x -= player.speed;
             if (keys['KeyD'] && player.x < canvas.width - 25) player.x += player.speed;
         }
 
+        // AI Logic
         aiTimer++;
         if (aiTimer > 150 && !opponent.isTelegraphing) {
             opponent.isTelegraphing = true;
@@ -336,22 +342,25 @@
             opponent.y += (player.y - opponent.y) / 60;
         }
 
+        // COLLISION CHECK
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
         let dist = Math.sqrt(dx*dx + dy*dy);
 
         if (dist < 35 && invincibilityFrames <= 0) {
+            // Check for Sprawl
             if (keys['KeyH'] && sprawlCooldown <= 0) {
                 opponent.x += (opponent.x > player.x) ? 70 : -70;
                 sprawlCooldown = 300; 
                 invincibilityFrames = 30;
-                stallTimer = 0; // Action resets stalling
-            } else if (!isLunging) {
+                stallTimer = 0; 
+            } 
+            // If not lunging and not sprawling, you get caught
+            else if (!isLunging) {
                 startStruggle();
             }
         }
         
-        // REVERTED TO ORIGINAL TIME-BASED SCORING
         score++;
         if(score % 60 === 0) scoreText.innerText = Math.floor(score/60);
     }
@@ -361,19 +370,16 @@
         ctx.fillStyle = "#2d4a3e";
         ctx.fillRect(0,0, canvas.width, canvas.height);
         
-        // Ring visual
         ctx.strokeStyle = "rgba(212, 175, 55, 0.5)";
         ctx.lineWidth = 8;
         ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 160, 0, Math.PI*2); ctx.stroke();
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI*2); ctx.stroke();
 
-        // Player Shadow/Invuln effect
         if (invincibilityFrames % 10 < 5) {
             ctx.drawImage(spriteOwen, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
         }
 
-        // Sprawl Cooldown Bar
         if (sprawlCooldown > 0) {
             ctx.fillStyle = "#444";
             ctx.fillRect(player.x - 20, player.y - 40, 40, 5);
