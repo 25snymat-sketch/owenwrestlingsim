@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Owen Wrestling Simulator</title>
+    <title>Owen Wrestling Simulator - Pro</title>
     <style>
         body {
             background-color: #000;
@@ -88,19 +88,30 @@
         @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
 
         #game-over { 
-            display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; 
-            padding: 10px; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95);
+            display: none; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; 
+            padding: 20px; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95);
             position: absolute; top: 0; left: 0; z-index: 20;
+            overflow-y: auto;
         }
 
-        #game-over img { width: 95%; max-width: 450px; border: 4px solid #fff; border-radius: 10px; margin: 10px 0; }
-        .pinned-text { color: #fff; margin: 0; font-size: 2.5rem; font-weight: 900; text-shadow: 2px 2px 0px #b22222; }
+        #game-over img { width: 80%; max-width: 300px; border: 3px solid #fff; border-radius: 10px; margin: 10px 0; }
+        .pinned-text { color: #fff; margin: 0; font-size: 1.8rem; font-weight: 900; text-shadow: 2px 2px 0px #b22222; }
+
+        #leaderboard {
+            width: 80%;
+            margin: 15px 0;
+            border-collapse: collapse;
+            font-size: 14px;
+            color: #eee;
+        }
+        #leaderboard th { border-bottom: 1px solid #D4AF37; padding-bottom: 5px; color: #D4AF37; }
+        #leaderboard td { padding: 3px; }
 
         #footer {
             background: #000; padding: 10px; font-size: 11px; text-align: center; border-top: 1px solid #333; line-height: 1.5; color: #eee;
         }
         .key { color: #000; background: #fff; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
-        button { padding: 12px 24px; background: #fff; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
+        button { padding: 10px 20px; background: #fff; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; margin-top: 10px;}
     </style>
 </head>
 <body>
@@ -108,7 +119,7 @@
 <div id="game-wrapper">
     <div id="ui-bar">
         <span>Score: <b id="score">0</b></span>
-        <span id="stall-indicator" style="color: #fff;"></span>
+        <span id="difficulty-text" style="color: #D4AF37;">Lvl 1</span>
         <span id="state" style="color: #fff;">NEUTRAL</span>
     </div>
 
@@ -117,6 +128,7 @@
         
         <div id="menu">
             <h1 style="text-align:center; color: #fff;">OWEN WRESTLING</h1>
+            <p style="text-align: center; font-size: 12px;">Difficulty increases as you score!</p>
             <button onclick="startGame()">START MATCH</button>
         </div>
 
@@ -135,14 +147,21 @@
 
         <div id="game-over">
             <h2 id="death-reason" class="pinned-text">1-2-3! PINNED!</h2>
+            <p id="final-score" style="margin: 5px; font-weight: bold;"></p>
+            
+            <table id="leaderboard">
+                <thead><tr><th>Rank</th><th>Score</th></tr></thead>
+                <tbody id="leaderboard-body"></tbody>
+            </table>
+
             <img id="lose-gif" src="owenthrewgif.gif" alt="Lose GIF">
-            <button onclick="startGame()" style="margin-top: 5px;">REMATCH</button>
+            <button onclick="startGame()">REMATCH</button>
         </div>
     </div>
 
     <div id="footer">
         <span class="key">WASD</span> Move | <span class="key">E</span> Shot | <span class="key">H</span> Sprawl<br>
-        Take a <b>Shot</b> while inside the <b style="color: white;">White Circle</b> to score!
+        Score increases difficulty. Getting pinned gets you DQ'd!
     </div>
 </div>
 
@@ -154,12 +173,12 @@
     const struggleOverlay = document.getElementById('struggle-overlay');
     const scoreText = document.getElementById('score');
     const stateText = document.getElementById('state');
+    const difficultyText = document.getElementById('difficulty-text');
     const currentMashText = document.getElementById('current-mashes');
     const targetMashText = document.getElementById('target-mashes');
     const timerDisplay = document.getElementById('timer-display');
     const loseGif = document.getElementById('lose-gif');
     const stallWarningUI = document.getElementById('stall-warning');
-    const stallIndicator = document.getElementById('stall-indicator');
 
     const spriteOwen = new Image(); spriteOwen.src = 'black_wrestler_sprite.png';
     const spriteOpponent = new Image(); spriteOpponent.src = 'red_wrestler_sprite.png';
@@ -168,10 +187,10 @@
     let player, opponent, gameActive, score, animationId, aiTimer;
     let isStruggling = false, currentMashes = 0, targetMashes = 0, struggleTimer = 600;
     let spaceReleased = true, isTakingShot = false, shotTimer = 0;
+    let stallTimer = 0, stallCalls = 0, sprawlCooldown = 0, invincibilityFrames = 0;
     
-    let stallTimer = 0, stallCalls = 0;
-    let sprawlCooldown = 0; 
-    let invincibilityFrames = 0;
+    // DIFFICULTY CONSTANTS
+    let diffMult = 1.0;
 
     const keys = {};
 
@@ -206,23 +225,20 @@
         isTakingShot = false;
         score = 0;
         aiTimer = 0;
-        resetStall();
+        stallTimer = 0;
+        stallCalls = 0;
         sprawlCooldown = 0;
         invincibilityFrames = 0;
-        scoreText.innerText = score;
+        diffMult = 1.0;
+        
+        scoreText.innerText = "0";
+        difficultyText.innerText = "Lvl 1";
         stateText.innerText = "NEUTRAL";
         
         player = { x: 100, y: 175, size: 50, speed: 4, shotRange: 85 };
         opponent = { x: 380, y: 175, size: 50, speed: 2.2, isTelegraphing: false, telegraphFrames: 0 };
 
         gameLoop();
-    }
-
-    function resetStall() {
-        stallTimer = 0;
-        stallCalls = 0;
-        stallIndicator.innerText = "";
-        stallWarningUI.style.display = 'none';
     }
 
     function attemptShot() {
@@ -234,7 +250,7 @@
             isTakingShot = false; 
             invincibilityFrames = 60; 
             stateText.innerText = "TAKEDOWN!";
-            resetStall();
+            stallTimer = 0;
             
             opponent.x += (opponent.x > player.x) ? 150 : -150;
             opponent.x = Math.max(50, Math.min(canvas.width - 50, opponent.x));
@@ -244,9 +260,7 @@
         } else {
             isTakingShot = true;
             shotTimer = 15;
-            if (dist < 50 && opponent.isTelegraphing) {
-                startStruggle();
-            }
+            if (dist < 50 && opponent.isTelegraphing) startStruggle();
         }
     }
 
@@ -257,11 +271,14 @@
         isTakingShot = false;
         currentMashes = 0;
         spaceReleased = true;
-        targetMashes = Math.floor(Math.random() * 10) + 15; 
-        struggleTimer = 600; 
         
-        score -= 400; 
-        if (score < 0) score = 0;
+        // DIFFICULTY RAMP: Target mashes increase with difficulty
+        let baseMashes = Math.floor(Math.random() * 10) + 12;
+        targetMashes = Math.floor(baseMashes * diffMult); 
+        
+        struggleTimer = Math.max(200, 600 - (diffMult * 20)); // Less time to escape as game goes on
+        
+        score = Math.max(0, score - 400);
         scoreText.innerText = Math.floor(score/60);
 
         currentMashText.innerText = currentMashes;
@@ -277,7 +294,7 @@
             stateText.innerText = "NEUTRAL";
             opponent.x += (opponent.x > player.x) ? 120 : -120;
             invincibilityFrames = 60; 
-            resetStall();
+            stallTimer = 0;
         } else {
             endGame("1-2-3! PINNED!");
         }
@@ -292,6 +309,11 @@
             if (struggleTimer <= 0) endStruggle(false);
             return;
         }
+
+        // RAMP DIFFICULTY BASED ON SCORE
+        // Every 20 points (1200 frames), opponent gets faster and mashing gets harder
+        diffMult = 1.0 + (Math.floor(score / 1200) * 0.15);
+        difficultyText.innerText = `Lvl ${Math.floor(score / 1200) + 1}`;
 
         if (sprawlCooldown > 0) sprawlCooldown--;
         if (invincibilityFrames > 0) invincibilityFrames--;
@@ -310,9 +332,10 @@
         }
 
         aiTimer++;
-        if (aiTimer > 150 && !opponent.isTelegraphing) {
+        // AI speed influenced by diffMult
+        if (aiTimer > (150 / diffMult) && !opponent.isTelegraphing) {
             opponent.isTelegraphing = true;
-            opponent.telegraphFrames = 45; 
+            opponent.telegraphFrames = Math.max(20, 45 - (diffMult * 2)); 
             aiTimer = 0;
         }
 
@@ -320,13 +343,14 @@
             opponent.telegraphFrames--;
             if (opponent.telegraphFrames <= 0) {
                 let angle = Math.atan2(player.y - opponent.y, player.x - opponent.x);
-                opponent.x += Math.cos(angle) * 100;
-                opponent.y += Math.sin(angle) * 100;
+                opponent.x += Math.cos(angle) * (100 * diffMult);
+                opponent.y += Math.sin(angle) * (100 * diffMult);
                 opponent.isTelegraphing = false;
             }
         } else {
-            opponent.x += (player.x - opponent.x) / 60;
-            opponent.y += (player.y - opponent.y) / 60;
+            // Tracking speed increases with level
+            opponent.x += (player.x - opponent.x) / (60 / diffMult);
+            opponent.y += (player.y - opponent.y) / (60 / diffMult);
         }
 
         let dx = player.x - opponent.x;
@@ -339,8 +363,7 @@
                 sprawlCooldown = 300; 
                 invincibilityFrames = 35;
                 stallTimer = 0; 
-            } 
-            else {
+            } else {
                 startStruggle();
             }
         }
@@ -352,7 +375,6 @@
             if (stallCalls >= 2) endGame("DQ: STALLING!");
             else {
                 stallWarningUI.style.display = 'block';
-                stallIndicator.innerText = "⚠ STALL CALL";
                 setTimeout(() => { stallWarningUI.style.display = 'none'; }, 2000);
             }
         }
@@ -411,12 +433,37 @@
         animationId = requestAnimationFrame(gameLoop);
     }
 
+    // LEADERBOARD LOGIC
+    function saveScore(newScore) {
+        let highScores = JSON.parse(localStorage.getItem('owenHighScores')) || [];
+        highScores.push(newScore);
+        highScores.sort((a, b) => b - a);
+        highScores = highScores.slice(0, 10);
+        localStorage.setItem('owenHighScores', JSON.stringify(highScores));
+        displayLeaderboard(highScores);
+    }
+
+    function displayLeaderboard(scores) {
+        const tbody = document.getElementById('leaderboard-body');
+        tbody.innerHTML = '';
+        scores.forEach((s, i) => {
+            const row = `<tr><td>#${i+1}</td><td>${s}</td></tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
     function endGame(reason) {
         gameActive = false;
         cancelAnimationFrame(animationId);
         canvas.style.display = 'none';
         struggleOverlay.style.display = 'none';
+        
+        const finalS = Math.floor(score/60);
         document.getElementById('death-reason').innerText = reason;
+        document.getElementById('final-score').innerText = "Final Score: " + finalS;
+        
+        saveScore(finalS);
+
         loseGif.src = "owenthrewgif.gif?t=" + new Date().getTime();
         gameOverScreen.style.display = 'flex';
     }
