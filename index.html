@@ -84,46 +84,20 @@
             z-index: 5;
         }
 
-        @keyframes pulse {
-            from { transform: scale(1); }
-            to { transform: scale(1.05); }
-        }
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
 
         #game-over { 
-            display: none; 
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center; 
-            padding: 10px; 
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 20;
+            display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; 
+            padding: 10px; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95);
+            position: absolute; top: 0; left: 0; z-index: 20;
         }
 
-        #game-over img { 
-            width: 95%; 
-            max-width: 450px; 
-            border: 4px solid #D4AF37; 
-            border-radius: 10px; 
-            margin: 10px 0;
-        }
-
+        #game-over img { width: 95%; max-width: 450px; border: 4px solid #D4AF37; border-radius: 10px; margin: 10px 0; }
         .pinned-text { color: #ff4d4d; margin: 0; font-size: 2.5rem; font-weight: 900; text-shadow: 2px 2px 0px #000; }
 
         #footer {
-            background: #0a0a0a;
-            padding: 10px;
-            font-size: 11px;
-            text-align: center;
-            border-top: 1px solid #333;
-            line-height: 1.5;
+            background: #0a0a0a; padding: 10px; font-size: 11px; text-align: center; border-top: 1px solid #333; line-height: 1.5;
         }
-
         .key { color: #fff; background: #444; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
         button { padding: 12px 24px; background: #D4AF37; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
     </style>
@@ -149,12 +123,12 @@
 
         <div id="struggle-overlay">
             <div id="mash-box">
-                <h3 style="margin: 0; color: #ff4d4d;">NEAR FALL!</h3>
+                <h3 style="margin: 0; color: #ff4d4d;">NEAR FALL! (-7)</h3>
                 <p id="timer-display" style="color: #fff; margin: 5px 0;">Escape in: 10s</p>
                 <div style="font-size: 2rem; font-weight: bold;">
                     <span id="current-mashes">0</span> / <span id="target-mashes">?</span>
                 </div>
-                <p style="font-size: 10px; color: #aaa; margin-top: 10px;">MASH SPACE (NO HOLDING)</p>
+                <p style="font-size: 10px; color: #aaa; margin-top: 10px;">MASH SPACE</p>
             </div>
         </div>
 
@@ -166,8 +140,8 @@
     </div>
 
     <div id="footer">
-        <span class="key">WASD</span> Move | <span class="key">E</span> Lunge Takedown | <span class="key">H</span> Sprawl<br>
-        Don't Stall! Move or Attack to keep the ref happy.
+        <span class="key">WASD</span> Move | <span class="key">E</span> Lunge | <span class="key">H</span> Sprawl (5s Cooldown)<br>
+        Score by Escaping (+20) or Takedowns (+5). 
     </div>
 </div>
 
@@ -194,10 +168,9 @@
     let isStruggling = false, currentMashes = 0, targetMashes = 0, struggleTimer = 600;
     let spaceReleased = true, isLunging = false, lungeTimer = 0;
     
-    // Stalling Variables
-    let stallTimer = 0; 
-    let stallCalls = 0;
-    let lastActionScore = 0;
+    let stallTimer = 0, stallCalls = 0, lastActionScore = 0;
+    let sprawlCooldown = 0; // Frames
+    let invincibilityFrames = 0;
 
     const keys = {};
 
@@ -221,10 +194,10 @@
         if (e.code === 'Space') spaceReleased = true;
     });
 
-    function getRandomTarget() {
-        const roll = Math.random();
-        if (roll < 0.7) return Math.floor(Math.random() * 21) + 20; 
-        return Math.floor(Math.random() * 50) + 20;
+    function updateScore(amt) {
+        score += amt;
+        scoreText.innerText = score;
+        if (amt > 0) stallTimer = 0; // Reset stall on any points gained
     }
 
     function startGame() {
@@ -240,7 +213,8 @@
         aiTimer = 0;
         stallTimer = 0;
         stallCalls = 0;
-        lastActionScore = 0;
+        sprawlCooldown = 0;
+        invincibilityFrames = 0;
         stallIndicator.innerText = "";
         scoreText.innerText = score;
         stateText.innerText = "NEUTRAL";
@@ -253,38 +227,39 @@
 
     function attemptLunge() {
         isLunging = true;
-        lungeTimer = 15; // 15 frames of high-speed dash
+        lungeTimer = 15;
         
-        // IF LUNGING WHILE OPPONENT HAS EXCLAMATION: INSTANT NEAR FALL
         if (opponent.isTelegraphing) {
             startStruggle();
             return;
         }
 
-        // Check for normal takedown success
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
         let dist = Math.sqrt(dx*dx + dy*dy);
+        
         if (dist < 80) {
             opponent.x += (opponent.x > player.x) ? 150 : -150;
-            score += 200;
+            invincibilityFrames = 60; // 1 second
+            updateScore(5);
             stateText.innerText = "TAKEDOWN!";
             setTimeout(() => { if(gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
         }
     }
 
     function startStruggle() {
+        if (invincibilityFrames > 0) return;
         isStruggling = true;
         isLunging = false;
         currentMashes = 0;
         spaceReleased = true;
-        targetMashes = getRandomTarget();
+        targetMashes = Math.floor(Math.random() * 30) + 15;
         struggleTimer = 600; 
         
+        updateScore(-7); // Lose points for getting caught
         currentMashText.innerText = currentMashes;
         targetMashText.innerText = targetMashes;
         stateText.innerText = "NEAR FALL!";
-        stateText.style.color = "#ff4d4d";
         struggleOverlay.style.display = 'flex';
     }
 
@@ -292,11 +267,11 @@
         if (escaped) {
             isStruggling = false;
             struggleOverlay.style.display = 'none';
-            stateText.innerText = "NEUTRAL";
-            stateText.style.color = "#D4AF37";
+            stateText.innerText = "ESCAPED!";
             opponent.x += (opponent.x > player.x) ? 120 : -120;
-            score += 100;
-            stallTimer = 0; // Escaping resets stall
+            invincibilityFrames = 60; 
+            updateScore(20);
+            setTimeout(() => { if(gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
         } else {
             endGame("1-2-3! PINNED!");
         }
@@ -312,27 +287,21 @@
             return;
         }
 
-        // Stalling Logic: 15 seconds (900 frames)
-        stallTimer++;
-        if (score > lastActionScore + 10) { // If player is gaining points (moving/playing)
-            stallTimer = 0;
-            lastActionScore = score;
-            stallWarningUI.style.display = 'none';
-        }
+        if (sprawlCooldown > 0) sprawlCooldown--;
+        if (invincibilityFrames > 0) invincibilityFrames--;
 
-        if (stallTimer > 900) { // 15 seconds
+        stallTimer++;
+        if (stallTimer > 900) { 
             stallCalls++;
             stallTimer = 0;
-            if (stallCalls >= 2) {
-                endGame("DQ: STALLING!");
-            } else {
+            if (stallCalls >= 2) endGame("DQ: STALLING!");
+            else {
                 stallWarningUI.style.display = 'block';
                 stallIndicator.innerText = "⚠ STALL CALL";
                 setTimeout(() => { stallWarningUI.style.display = 'none'; }, 2000);
             }
         }
 
-        // Lunge physics
         if (isLunging) {
             let angle = Math.atan2(opponent.y - player.y, opponent.x - player.x);
             player.x += Math.cos(angle) * 12;
@@ -341,7 +310,6 @@
             if (lungeTimer <= 0) isLunging = false;
         }
 
-        // Standard Movement
         if (!isLunging) {
             if (keys['KeyW'] && player.y > 25) player.y -= player.speed;
             if (keys['KeyS'] && player.y < canvas.height - 25) player.y += player.speed;
@@ -349,7 +317,6 @@
             if (keys['KeyD'] && player.x < canvas.width - 25) player.x += player.speed;
         }
 
-        // AI Logic
         aiTimer++;
         if (aiTimer > 150 && !opponent.isTelegraphing) {
             opponent.isTelegraphing = true;
@@ -370,59 +337,54 @@
             opponent.y += (player.y - opponent.y) / 60;
         }
 
-        // Collision
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
         let dist = Math.sqrt(dx*dx + dy*dy);
 
-        if (dist < 35) {
-            if (keys['KeyH']) {
-                opponent.x += (opponent.x > player.x) ? 50 : -50;
-                score += 50;
+        if (dist < 35 && invincibilityFrames <= 0) {
+            if (keys['KeyH'] && sprawlCooldown <= 0) {
+                opponent.x += (opponent.x > player.x) ? 70 : -70;
+                updateScore(5);
+                sprawlCooldown = 300; // 5 seconds
+                invincibilityFrames = 30; // Half second invuln
             } else if (!isLunging) {
                 startStruggle();
             }
         }
-        
-        score++;
-        if(score % 60 === 0) scoreText.innerText = Math.floor(score/60);
     }
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // DRAW MAT
         ctx.fillStyle = "#2d4a3e";
         ctx.fillRect(0,0, canvas.width, canvas.height);
         
-        // Outer Circle
+        // Ring
         ctx.strokeStyle = "rgba(212, 175, 55, 0.5)";
         ctx.lineWidth = 8;
-        ctx.beginPath();
-        ctx.arc(canvas.width/2, canvas.height/2, 160, 0, Math.PI*2);
-        ctx.stroke();
-
-        // Inner Circle
+        ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 160, 0, Math.PI*2); ctx.stroke();
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI*2);
-        ctx.stroke();
+        ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI*2); ctx.stroke();
 
-        // Line
-        ctx.beginPath();
-        ctx.moveTo(canvas.width/2 - 40, canvas.height/2);
-        ctx.lineTo(canvas.width/2 + 40, canvas.height/2);
-        ctx.stroke();
+        // Player Shadow/Invuln effect
+        if (invincibilityFrames % 10 < 5) {
+            ctx.drawImage(spriteOwen, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
+        }
 
-        // Characters
-        ctx.drawImage(spriteOwen, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
+        // Sprawl Cooldown Bar
+        if (sprawlCooldown > 0) {
+            ctx.fillStyle = "#444";
+            ctx.fillRect(player.x - 20, player.y - 40, 40, 5);
+            ctx.fillStyle = "#00ffff";
+            ctx.fillRect(player.x - 20, player.y - 40, (sprawlCooldown / 300) * 40, 5);
+        }
+
         ctx.drawImage(spriteOpponent, opponent.x - opponent.size/2, opponent.y - opponent.size/2, opponent.size, opponent.size);
 
         if (opponent.isTelegraphing) {
             ctx.drawImage(iconAlert, opponent.x - 15, opponent.y - 55, 30, 30);
         }
         
-        if (keys['KeyH']) {
+        if (keys['KeyH'] && sprawlCooldown <= 0) {
             ctx.strokeStyle = "#00ffff";
             ctx.lineWidth = 3;
             ctx.beginPath(); ctx.arc(player.x, player.y, 35, 0, Math.PI*2); ctx.stroke();
