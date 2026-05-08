@@ -161,7 +161,7 @@
 
     <div id="footer">
         <span class="key">WASD</span> Move | <span class="key">E</span> Shot | <span class="key">H</span> Sprawl<br>
-        Score increases difficulty. Getting pinned gets you DQ'd!
+        Score penalty for Near Fall is now only <b>-3</b>!
     </div>
 </div>
 
@@ -189,7 +189,6 @@
     let spaceReleased = true, isTakingShot = false, shotTimer = 0;
     let stallTimer = 0, stallCalls = 0, sprawlCooldown = 0, invincibilityFrames = 0;
     
-    // DIFFICULTY CONSTANTS
     let diffMult = 1.0;
 
     const keys = {};
@@ -272,13 +271,13 @@
         currentMashes = 0;
         spaceReleased = true;
         
-        // DIFFICULTY RAMP: Target mashes increase with difficulty
         let baseMashes = Math.floor(Math.random() * 10) + 12;
         targetMashes = Math.floor(baseMashes * diffMult); 
         
-        struggleTimer = Math.max(200, 600 - (diffMult * 20)); // Less time to escape as game goes on
+        struggleTimer = Math.max(200, 600 - (diffMult * 20)); 
         
-        score = Math.max(0, score - 400);
+        // SCORE PENALTY REDUCED TO -3 (180 frames)
+        score = Math.max(0, score - 180);
         scoreText.innerText = Math.floor(score/60);
 
         currentMashText.innerText = currentMashes;
@@ -310,8 +309,6 @@
             return;
         }
 
-        // RAMP DIFFICULTY BASED ON SCORE
-        // Every 20 points (1200 frames), opponent gets faster and mashing gets harder
         diffMult = 1.0 + (Math.floor(score / 1200) * 0.15);
         difficultyText.innerText = `Lvl ${Math.floor(score / 1200) + 1}`;
 
@@ -332,7 +329,6 @@
         }
 
         aiTimer++;
-        // AI speed influenced by diffMult
         if (aiTimer > (150 / diffMult) && !opponent.isTelegraphing) {
             opponent.isTelegraphing = true;
             opponent.telegraphFrames = Math.max(20, 45 - (diffMult * 2)); 
@@ -348,7 +344,6 @@
                 opponent.isTelegraphing = false;
             }
         } else {
-            // Tracking speed increases with level
             opponent.x += (player.x - opponent.x) / (60 / diffMult);
             opponent.y += (player.y - opponent.y) / (60 / diffMult);
         }
@@ -433,7 +428,6 @@
         animationId = requestAnimationFrame(gameLoop);
     }
 
-    // LEADERBOARD LOGIC
     function saveScore(newScore) {
         let highScores = JSON.parse(localStorage.getItem('owenHighScores')) || [];
         highScores.push(newScore);
