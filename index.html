@@ -49,6 +49,33 @@
 
         canvas { display: none; width: 100%; height: 100%; image-rendering: pixelated; }
 
+        /* Struggle UI Overlay */
+        #struggle-overlay {
+            display: none;
+            position: absolute;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 10;
+        }
+
+        #mash-box {
+            background: #222;
+            border: 4px solid #ff4d4d;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            animation: pulse 0.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
         #game-over { 
             display: none; 
             flex-direction: column;
@@ -122,7 +149,7 @@
 <div id="game-wrapper">
     <div id="ui-bar">
         <span>Score: <b id="score">0</b></span>
-        <span id="state" class="gold-text">NEUTRAL</span>
+        <span id="state" style="color: #D4AF37;">NEUTRAL</span>
     </div>
 
     <div id="main-stage">
@@ -133,6 +160,16 @@
 
         <canvas id="gameCanvas" width="500" height="350"></canvas>
 
+        <div id="struggle-overlay">
+            <div id="mash-box">
+                <h3 style="margin: 0; color: #ff4d4d;">KICK OUT!</h3>
+                <p style="font-size: 12px; color: #eee;">MASH <span class="key">SPACE</span></p>
+                <div style="font-size: 2rem; font-weight: bold;">
+                    <span id="current-mashes">0</span> / <span id="target-mashes">?</span>
+                </div>
+            </div>
+        </div>
+
         <div id="game-over">
             <h2 class="pinned-text">PINNED!</h2>
             <img src="owenthrewgif.gif" alt="Funny Lose GIF">
@@ -141,7 +178,7 @@
     </div>
 
     <div id="footer">
-        <span class="key">WASD</span> Move | <span class="key">SPACE</span> Takedown
+        <span class="key">WASD</span> Move | <span class="key">SPACE</span> Kick Out
     </div>
 </div>
 
@@ -150,40 +187,101 @@
     const ctx = canvas.getContext('2d');
     const menu = document.getElementById('menu');
     const gameOverScreen = document.getElementById('game-over');
+    const struggleOverlay = document.getElementById('struggle-overlay');
     const scoreText = document.getElementById('score');
     const stateText = document.getElementById('state');
+    const currentMashText = document.getElementById('current-mashes');
+    const targetMashText = document.getElementById('target-mashes');
 
-    // Image setup matching your uploaded filenames
     const spriteOwen = new Image(); spriteOwen.src = 'black_wrestler_sprite.png';
     const spriteOpponent = new Image(); spriteOpponent.src = 'red_wrestler_sprite.png';
     const iconAlert = new Image(); iconAlert.src = 'exclamation_sprite.png';
 
     let player, opponent, gameActive, score, animationId, aiTimer;
+    let isStruggling = false;
+    let currentMashes = 0;
+    let targetMashes = 0;
+    let struggleTimer = 0;
     const keys = {};
 
-    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keydown', e => {
+        keys[e.code] = true;
+        // Check for mash input
+        if (e.code === 'Space' && isStruggling) {
+            currentMashes++;
+            currentMashText.innerText = currentMashes;
+            if (currentMashes >= targetMashes) {
+                endStruggle(true);
+            }
+        }
+    });
     window.addEventListener('keyup', e => keys[e.code] = false);
+
+    function getRandomTarget() {
+        // Weighted logic: Most likely between 20-40, but can be 1-75
+        const roll = Math.random();
+        if (roll < 0.7) { // 70% chance for mid-range
+            return Math.floor(Math.random() * 21) + 20; 
+        } else if (roll < 0.85) { // 15% chance for easy
+            return Math.floor(Math.random() * 19) + 1;
+        } else { // 15% chance for hard
+            return Math.floor(Math.random() * 35) + 41;
+        }
+    }
 
     function startGame() {
         menu.style.display = 'none';
         gameOverScreen.style.display = 'none';
+        struggleOverlay.style.display = 'none';
         canvas.style.display = 'block';
         
         gameActive = true;
+        isStruggling = false;
         score = 0;
         aiTimer = 0;
         scoreText.innerText = score;
         stateText.innerText = "NEUTRAL";
         
-        // Character sizes increased to 50 for better visibility
         player = { x: 100, y: 175, size: 50, speed: 4 };
         opponent = { x: 380, y: 175, size: 50, speed: 2, isTelegraphing: false, telegraphFrames: 0 };
 
         gameLoop();
     }
 
+    function startStruggle() {
+        isStruggling = true;
+        currentMashes = 0;
+        targetMashes = getRandomTarget();
+        struggleTimer = 180; // Player has ~3 seconds to escape (60fps * 3)
+        
+        currentMashText.innerText = currentMashes;
+        targetMashText.innerText = targetMashes;
+        stateText.innerText = "PINNED!";
+        stateText.style.color = "#ff4d4d";
+        struggleOverlay.style.display = 'flex';
+    }
+
+    function endStruggle(escaped) {
+        if (escaped) {
+            isStruggling = false;
+            struggleOverlay.style.display = 'none';
+            stateText.innerText = "NEUTRAL";
+            stateText.style.color = "#D4AF37";
+            // Repel opponent slightly
+            opponent.x += (opponent.x > player.x) ? 100 : -100;
+        } else {
+            endGame();
+        }
+    }
+
     function update() {
         if (!gameActive) return;
+
+        if (isStruggling) {
+            struggleTimer--;
+            if (struggleTimer <= 0) endStruggle(false);
+            return; // Stop movement while struggling
+        }
 
         // Player Movement
         if (keys['KeyW'] && player.y > player.size/2) player.y -= player.speed;
@@ -203,8 +301,8 @@
             opponent.telegraphFrames--;
             if (opponent.telegraphFrames <= 0) {
                 let angle = Math.atan2(player.y - opponent.y, player.x - opponent.x);
-                opponent.x += Math.cos(angle) * 60;
-                opponent.y += Math.sin(angle) * 60;
+                opponent.x += Math.cos(angle) * 80; // Speed up the charge
+                opponent.y += Math.sin(angle) * 80;
                 opponent.isTelegraphing = false;
             }
         } else {
@@ -214,13 +312,13 @@
             else opponent.y += opponent.speed;
         }
 
-        // Collision Check (smaller hit box for precision)
+        // Collision Check
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
         let distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < 35) {
-            endGame();
+            startStruggle();
         }
         
         score++;
@@ -249,8 +347,10 @@
 
     function endGame() {
         gameActive = false;
+        isStruggling = false;
         cancelAnimationFrame(animationId);
         canvas.style.display = 'none';
+        struggleOverlay.style.display = 'none';
         gameOverScreen.style.display = 'flex';
     }
 </script>
