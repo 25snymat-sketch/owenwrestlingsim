@@ -41,7 +41,7 @@
             position: relative;
             width: 100%;
             height: 350px;
-            background: #2d4a3e;
+            background: radial-gradient(circle, #2d4a3e 60%, #162e24 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -49,6 +49,7 @@
 
         canvas { display: none; width: 100%; height: 100%; image-rendering: pixelated; }
 
+        /* Struggle UI Overlay */
         #struggle-overlay {
             display: none;
             position: absolute;
@@ -57,7 +58,7 @@
             align-items: center;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.7);
             z-index: 10;
         }
 
@@ -70,36 +71,77 @@
             animation: pulse 0.5s infinite alternate;
         }
 
-        #stall-warning {
-            position: absolute;
-            top: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 0, 0, 0.8);
-            color: white;
-            padding: 5px 15px;
-            border-radius: 5px;
-            font-weight: bold;
-            display: none;
-            z-index: 5;
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
         }
-
-        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
 
         #game-over { 
-            display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; 
-            padding: 10px; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95);
-            position: absolute; top: 0; left: 0; z-index: 20;
+            display: none; 
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center; 
+            padding: 10px; 
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 20;
         }
 
-        #game-over img { width: 95%; max-width: 450px; border: 4px solid #D4AF37; border-radius: 10px; margin: 10px 0; }
-        .pinned-text { color: #ff4d4d; margin: 0; font-size: 2.5rem; font-weight: 900; text-shadow: 2px 2px 0px #000; }
+        #game-over img { 
+            width: 95%; 
+            max-width: 450px; 
+            border: 4px solid #D4AF37; 
+            border-radius: 10px; 
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.6);
+            margin: 10px 0;
+        }
+
+        .pinned-text {
+            color: #ff4d4d; 
+            margin: 0; 
+            font-size: 2.5rem; 
+            font-weight: 900;
+            text-shadow: 2px 2px 0px #000;
+            animation: shake 0.2s infinite;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px); }
+            25% { transform: translate(-2px, -1px); }
+            50% { transform: translate(2px, 0px); }
+            75% { transform: translate(-1px, 2px); }
+            100% { transform: translate(1px, -1px); }
+        }
 
         #footer {
-            background: #0a0a0a; padding: 10px; font-size: 11px; text-align: center; border-top: 1px solid #333; line-height: 1.5;
+            background: #0a0a0a;
+            padding: 10px;
+            font-size: 12px;
+            text-align: center;
+            border-top: 1px solid #333;
         }
-        .key { color: #fff; background: #444; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
-        button { padding: 12px 24px; background: #D4AF37; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
+
+        .key { color: #fff; background: #444; padding: 2px 5px; border-radius: 3px; font-weight: bold; }
+
+        button {
+            padding: 12px 24px;
+            background: #D4AF37;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: scale(1.05); background: #b8972f; }
+
+        h1 { font-size: 1.5rem; margin-bottom: 20px; letter-spacing: 2px; }
     </style>
 </head>
 <body>
@@ -107,15 +149,12 @@
 <div id="game-wrapper">
     <div id="ui-bar">
         <span>Score: <b id="score">0</b></span>
-        <span id="stall-indicator" style="color: #ff4d4d;"></span>
-        <span id="state">NEUTRAL</span>
+        <span id="state" style="color: #D4AF37;">NEUTRAL</span>
     </div>
 
     <div id="main-stage">
-        <div id="stall-warning">STALLING WARNING!</div>
-        
         <div id="menu">
-            <h1 style="text-align:center;">OWEN WRESTLING</h1>
+            <h1>OWEN WRESTLING</h1>
             <button onclick="startGame()">START MATCH</button>
         </div>
 
@@ -123,25 +162,23 @@
 
         <div id="struggle-overlay">
             <div id="mash-box">
-                <h3 style="margin: 0; color: #ff4d4d;">NEAR FALL! (-7)</h3>
-                <p id="timer-display" style="color: #fff; margin: 5px 0;">Escape in: 10s</p>
+                <h3 style="margin: 0; color: #ff4d4d;">KICK OUT!</h3>
+                <p style="font-size: 12px; color: #eee;">MASH <span class="key">SPACE</span></p>
                 <div style="font-size: 2rem; font-weight: bold;">
                     <span id="current-mashes">0</span> / <span id="target-mashes">?</span>
                 </div>
-                <p style="font-size: 10px; color: #aaa; margin-top: 10px;">MASH SPACE</p>
             </div>
         </div>
 
         <div id="game-over">
-            <h2 id="death-reason" class="pinned-text">1-2-3! PINNED!</h2>
-            <img id="lose-gif" src="owenthrewgif.gif" alt="Funny Lose GIF">
+            <h2 class="pinned-text">PINNED!</h2>
+            <img src="owenthrewgif.gif" alt="Funny Lose GIF">
             <button onclick="startGame()" style="margin-top: 5px;">REMATCH</button>
         </div>
     </div>
 
     <div id="footer">
-        <span class="key">WASD</span> Move | <span class="key">E</span> Lunge | <span class="key">H</span> Sprawl (5s Cooldown)<br>
-        Score increases over time. Getting caught in a Near Fall costs 7 points!
+        <span class="key">WASD</span> Move | <span class="key">SPACE</span> Kick Out
     </div>
 </div>
 
@@ -155,44 +192,42 @@
     const stateText = document.getElementById('state');
     const currentMashText = document.getElementById('current-mashes');
     const targetMashText = document.getElementById('target-mashes');
-    const timerDisplay = document.getElementById('timer-display');
-    const loseGif = document.getElementById('lose-gif');
-    const stallWarningUI = document.getElementById('stall-warning');
-    const stallIndicator = document.getElementById('stall-indicator');
 
     const spriteOwen = new Image(); spriteOwen.src = 'black_wrestler_sprite.png';
     const spriteOpponent = new Image(); spriteOpponent.src = 'red_wrestler_sprite.png';
     const iconAlert = new Image(); iconAlert.src = 'exclamation_sprite.png';
 
     let player, opponent, gameActive, score, animationId, aiTimer;
-    let isStruggling = false, currentMashes = 0, targetMashes = 0, struggleTimer = 600;
-    let spaceReleased = true, isLunging = false, lungeTimer = 0;
-    
-    let stallTimer = 0, stallCalls = 0, lastActionScore = 0;
-    let sprawlCooldown = 0; 
-    let invincibilityFrames = 0;
-
+    let isStruggling = false;
+    let currentMashes = 0;
+    let targetMashes = 0;
+    let struggleTimer = 0;
     const keys = {};
 
     window.addEventListener('keydown', e => {
-        if (!keys[e.code]) {
-            if (e.code === 'Space' && isStruggling && spaceReleased) {
-                currentMashes++;
-                spaceReleased = false;
-                currentMashText.innerText = currentMashes;
-                if (currentMashes >= targetMashes) endStruggle(true);
-            }
-            if (e.code === 'KeyE' && !isStruggling && !isLunging && gameActive) {
-                attemptLunge();
+        keys[e.code] = true;
+        // Check for mash input
+        if (e.code === 'Space' && isStruggling) {
+            currentMashes++;
+            currentMashText.innerText = currentMashes;
+            if (currentMashes >= targetMashes) {
+                endStruggle(true);
             }
         }
-        keys[e.code] = true;
     });
+    window.addEventListener('keyup', e => keys[e.code] = false);
 
-    window.addEventListener('keyup', e => {
-        keys[e.code] = false;
-        if (e.code === 'Space') spaceReleased = true;
-    });
+    function getRandomTarget() {
+        // Weighted logic: Most likely between 20-40, but can be 1-75
+        const roll = Math.random();
+        if (roll < 0.7) { // 70% chance for mid-range
+            return Math.floor(Math.random() * 21) + 20; 
+        } else if (roll < 0.85) { // 15% chance for easy
+            return Math.floor(Math.random() * 19) + 1;
+        } else { // 15% chance for hard
+            return Math.floor(Math.random() * 35) + 41;
+        }
+    }
 
     function startGame() {
         menu.style.display = 'none';
@@ -202,63 +237,27 @@
         
         gameActive = true;
         isStruggling = false;
-        isLunging = false;
         score = 0;
         aiTimer = 0;
-        stallTimer = 0;
-        stallCalls = 0;
-        sprawlCooldown = 0;
-        invincibilityFrames = 0;
-        lastActionScore = 0;
-        stallIndicator.innerText = "";
         scoreText.innerText = score;
         stateText.innerText = "NEUTRAL";
         
         player = { x: 100, y: 175, size: 50, speed: 4 };
-        opponent = { x: 380, y: 175, size: 50, speed: 2.2, isTelegraphing: false, telegraphFrames: 0 };
+        opponent = { x: 380, y: 175, size: 50, speed: 2, isTelegraphing: false, telegraphFrames: 0 };
 
         gameLoop();
     }
 
-    function attemptLunge() {
-        isLunging = true;
-        lungeTimer = 15;
-        
-        // Counter-clinch logic
-        if (opponent.isTelegraphing) {
-            startStruggle();
-            return;
-        }
-
-        let dx = player.x - opponent.x;
-        let dy = player.y - opponent.y;
-        let dist = Math.sqrt(dx*dx + dy*dy);
-        
-        if (dist < 80) {
-            opponent.x += (opponent.x > player.x) ? 150 : -150;
-            invincibilityFrames = 60; // 1s protect
-            stateText.innerText = "TAKEDOWN!";
-            setTimeout(() => { if(gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
-        }
-    }
-
     function startStruggle() {
-        if (invincibilityFrames > 0) return;
         isStruggling = true;
-        isLunging = false;
         currentMashes = 0;
-        spaceReleased = true;
-        targetMashes = Math.floor(Math.random() * 30) + 15;
-        struggleTimer = 600; 
+        targetMashes = getRandomTarget();
+        struggleTimer = 180; // Player has ~3 seconds to escape (60fps * 3)
         
-        // REVERTED SCORING PENALTY
-        score -= 7;
-        if (score < 0) score = 0;
-        scoreText.innerText = Math.floor(score/60); // Match time-based UI
-
         currentMashText.innerText = currentMashes;
         targetMashText.innerText = targetMashes;
-        stateText.innerText = "NEAR FALL!";
+        stateText.innerText = "PINNED!";
+        stateText.style.color = "#ff4d4d";
         struggleOverlay.style.display = 'flex';
     }
 
@@ -267,11 +266,11 @@
             isStruggling = false;
             struggleOverlay.style.display = 'none';
             stateText.innerText = "NEUTRAL";
-            opponent.x += (opponent.x > player.x) ? 120 : -120;
-            invincibilityFrames = 60; 
-            stallTimer = 0;
+            stateText.style.color = "#D4AF37";
+            // Repel opponent slightly
+            opponent.x += (opponent.x > player.x) ? 100 : -100;
         } else {
-            endGame("1-2-3! PINNED!");
+            endGame();
         }
     }
 
@@ -280,46 +279,21 @@
 
         if (isStruggling) {
             struggleTimer--;
-            timerDisplay.innerText = `Escape in: ${Math.ceil(struggleTimer/60)}s`;
             if (struggleTimer <= 0) endStruggle(false);
-            return;
+            return; // Stop movement while struggling
         }
 
-        if (sprawlCooldown > 0) sprawlCooldown--;
-        if (invincibilityFrames > 0) invincibilityFrames--;
+        // Player Movement
+        if (keys['KeyW'] && player.y > player.size/2) player.y -= player.speed;
+        if (keys['KeyS'] && player.y < canvas.height - player.size/2) player.y += player.speed;
+        if (keys['KeyA'] && player.x > player.size/2) player.x -= player.speed;
+        if (keys['KeyD'] && player.x < canvas.width - player.size/2) player.x += player.speed;
 
-        // Stall Warning Logic
-        stallTimer++;
-        if (stallTimer > 900) { 
-            stallCalls++;
-            stallTimer = 0;
-            if (stallCalls >= 2) endGame("DQ: STALLING!");
-            else {
-                stallWarningUI.style.display = 'block';
-                stallIndicator.innerText = "⚠ STALL CALL";
-                setTimeout(() => { stallWarningUI.style.display = 'none'; }, 2000);
-            }
-        }
-
-        if (isLunging) {
-            let angle = Math.atan2(opponent.y - player.y, opponent.x - player.x);
-            player.x += Math.cos(angle) * 12;
-            player.y += Math.sin(angle) * 12;
-            lungeTimer--;
-            if (lungeTimer <= 0) isLunging = false;
-        }
-
-        if (!isLunging) {
-            if (keys['KeyW'] && player.y > 25) player.y -= player.speed;
-            if (keys['KeyS'] && player.y < canvas.height - 25) player.y += player.speed;
-            if (keys['KeyA'] && player.x > 25) player.x -= player.speed;
-            if (keys['KeyD'] && player.x < canvas.width - 25) player.x += player.speed;
-        }
-
+        // AI Logic
         aiTimer++;
         if (aiTimer > 150 && !opponent.isTelegraphing) {
             opponent.isTelegraphing = true;
-            opponent.telegraphFrames = 50; 
+            opponent.telegraphFrames = 45; 
             aiTimer = 0;
         }
 
@@ -327,70 +301,40 @@
             opponent.telegraphFrames--;
             if (opponent.telegraphFrames <= 0) {
                 let angle = Math.atan2(player.y - opponent.y, player.x - opponent.x);
-                opponent.x += Math.cos(angle) * 90;
-                opponent.y += Math.sin(angle) * 90;
+                opponent.x += Math.cos(angle) * 80; // Speed up the charge
+                opponent.y += Math.sin(angle) * 80;
                 opponent.isTelegraphing = false;
             }
         } else {
-            opponent.x += (player.x - opponent.x) / 60;
-            opponent.y += (player.y - opponent.y) / 60;
+            if (opponent.x > player.x) opponent.x -= opponent.speed;
+            else opponent.x += opponent.speed;
+            if (opponent.y > player.y) opponent.y -= opponent.speed;
+            else opponent.y += opponent.speed;
         }
 
+        // Collision Check
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
-        let dist = Math.sqrt(dx*dx + dy*dy);
+        let distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < 35 && invincibilityFrames <= 0) {
-            if (keys['KeyH'] && sprawlCooldown <= 0) {
-                opponent.x += (opponent.x > player.x) ? 70 : -70;
-                sprawlCooldown = 300; 
-                invincibilityFrames = 30;
-                stallTimer = 0; // Action resets stalling
-            } else if (!isLunging) {
-                startStruggle();
-            }
+        if (distance < 35) {
+            startStruggle();
         }
         
-        // REVERTED TO ORIGINAL TIME-BASED SCORING
         score++;
         if(score % 60 === 0) scoreText.innerText = Math.floor(score/60);
     }
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#2d4a3e";
-        ctx.fillRect(0,0, canvas.width, canvas.height);
-        
-        // Ring visual
-        ctx.strokeStyle = "rgba(212, 175, 55, 0.5)";
-        ctx.lineWidth = 8;
-        ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 160, 0, Math.PI*2); ctx.stroke();
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI*2); ctx.stroke();
 
-        // Player Shadow/Invuln effect
-        if (invincibilityFrames % 10 < 5) {
-            ctx.drawImage(spriteOwen, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
-        }
-
-        // Sprawl Cooldown Bar
-        if (sprawlCooldown > 0) {
-            ctx.fillStyle = "#444";
-            ctx.fillRect(player.x - 20, player.y - 40, 40, 5);
-            ctx.fillStyle = "#00ffff";
-            ctx.fillRect(player.x - 20, player.y - 40, (sprawlCooldown / 300) * 40, 5);
-        }
-
+        // Draw Sprites
+        ctx.drawImage(spriteOwen, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
         ctx.drawImage(spriteOpponent, opponent.x - opponent.size/2, opponent.y - opponent.size/2, opponent.size, opponent.size);
 
+        // Draw Warning Sprite
         if (opponent.isTelegraphing) {
             ctx.drawImage(iconAlert, opponent.x - 15, opponent.y - 55, 30, 30);
-        }
-        
-        if (keys['KeyH'] && sprawlCooldown <= 0) {
-            ctx.strokeStyle = "#00ffff";
-            ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(player.x, player.y, 35, 0, Math.PI*2); ctx.stroke();
         }
     }
 
@@ -401,13 +345,12 @@
         animationId = requestAnimationFrame(gameLoop);
     }
 
-    function endGame(reason) {
+    function endGame() {
         gameActive = false;
+        isStruggling = false;
         cancelAnimationFrame(animationId);
         canvas.style.display = 'none';
         struggleOverlay.style.display = 'none';
-        document.getElementById('death-reason').innerText = reason;
-        loseGif.src = "owenthrewgif.gif?t=" + new Date().getTime();
         gameOverScreen.style.display = 'flex';
     }
 </script>
