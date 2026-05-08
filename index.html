@@ -35,6 +35,19 @@
             background: #000;
             font-size: 14px;
             border-bottom: 3px solid #b22222;
+            position: relative;
+        }
+
+        #score-indicator {
+            position: absolute;
+            left: 85px;
+            top: 10px;
+            font-weight: bold;
+            font-size: 20px;
+            opacity: 0;
+            transition: transform 0.5s ease-out, opacity 0.5s;
+            pointer-events: none;
+            z-index: 100;
         }
 
         #main-stage {
@@ -119,6 +132,7 @@
 <div id="game-wrapper">
     <div id="ui-bar">
         <span>Score: <b id="score">0</b></span>
+        <div id="score-indicator"></div>
         <span id="difficulty-text" style="color: #D4AF37;">Lvl 1</span>
         <span id="state" style="color: #fff;">NEUTRAL</span>
     </div>
@@ -128,7 +142,7 @@
         
         <div id="menu">
             <h1 style="text-align:center; color: #fff;">OWEN WRESTLING</h1>
-            <p style="text-align: center; font-size: 12px;">Difficulty increases as you score!</p>
+            <p style="text-align: center; font-size: 12px;">Earn points for takedowns, avoid being pinned!</p>
             <button onclick="startGame()">START MATCH</button>
         </div>
 
@@ -161,7 +175,7 @@
 
     <div id="footer">
         <span class="key">WASD</span> Move | <span class="key">E</span> Shot | <span class="key">H</span> Sprawl<br>
-        Score penalty for Near Fall is now only <b>-3</b>!
+        Takedowns <b>+3</b> | Caught <b>-3</b>
     </div>
 </div>
 
@@ -172,6 +186,7 @@
     const gameOverScreen = document.getElementById('game-over');
     const struggleOverlay = document.getElementById('struggle-overlay');
     const scoreText = document.getElementById('score');
+    const scoreIndicator = document.getElementById('score-indicator');
     const stateText = document.getElementById('state');
     const difficultyText = document.getElementById('difficulty-text');
     const currentMashText = document.getElementById('current-mashes');
@@ -213,6 +228,18 @@
         if (e.code === 'Space') spaceReleased = true;
     });
 
+    function triggerScorePop(val, isPositive) {
+        scoreIndicator.innerText = (isPositive ? "+" : "") + val;
+        scoreIndicator.style.color = isPositive ? "#D4AF37" : "#ff3333";
+        scoreIndicator.style.opacity = "1";
+        scoreIndicator.style.transform = "translateY(-25px)";
+        
+        setTimeout(() => {
+            scoreIndicator.style.opacity = "0";
+            scoreIndicator.style.transform = "translateY(0px)";
+        }, 700);
+    }
+
     function startGame() {
         menu.style.display = 'none';
         gameOverScreen.style.display = 'none';
@@ -250,6 +277,11 @@
             invincibilityFrames = 60; 
             stateText.innerText = "TAKEDOWN!";
             stallTimer = 0;
+
+            // Score +3 (180 frames)
+            score += 180;
+            scoreText.innerText = Math.floor(score/60);
+            triggerScorePop(3, true);
             
             opponent.x += (opponent.x > player.x) ? 150 : -150;
             opponent.x = Math.max(50, Math.min(canvas.width - 50, opponent.x));
@@ -276,9 +308,10 @@
         
         struggleTimer = Math.max(200, 600 - (diffMult * 20)); 
         
-        // SCORE PENALTY REDUCED TO -3 (180 frames)
+        // Score -3 (180 frames)
         score = Math.max(0, score - 180);
         scoreText.innerText = Math.floor(score/60);
+        triggerScorePop(-3, false);
 
         currentMashText.innerText = currentMashes;
         targetMashText.innerText = targetMashes;
