@@ -141,7 +141,7 @@
 
     <div id="footer">
         <span class="key">WASD</span> Move | <span class="key">E</span> Lunge | <span class="key">H</span> Sprawl (5s Cooldown)<br>
-        Takedowns (+5) | Sprawls (+5) | Escapes (+20) | <b>Near Fall (-7)</b>
+        Score increases over time. Getting caught in a Near Fall costs 7 points!
     </div>
 </div>
 
@@ -168,7 +168,7 @@
     let isStruggling = false, currentMashes = 0, targetMashes = 0, struggleTimer = 600;
     let spaceReleased = true, isLunging = false, lungeTimer = 0;
     
-    let stallTimer = 0, stallCalls = 0;
+    let stallTimer = 0, stallCalls = 0, lastActionScore = 0;
     let sprawlCooldown = 0; 
     let invincibilityFrames = 0;
 
@@ -194,13 +194,6 @@
         if (e.code === 'Space') spaceReleased = true;
     });
 
-    function updateScore(amt) {
-        score += amt;
-        if (score < 0) score = 0;
-        scoreText.innerText = score;
-        if (amt > 0) stallTimer = 0; // Performance resets stalling
-    }
-
     function startGame() {
         menu.style.display = 'none';
         gameOverScreen.style.display = 'none';
@@ -216,6 +209,7 @@
         stallCalls = 0;
         sprawlCooldown = 0;
         invincibilityFrames = 0;
+        lastActionScore = 0;
         stallIndicator.innerText = "";
         scoreText.innerText = score;
         stateText.innerText = "NEUTRAL";
@@ -230,6 +224,7 @@
         isLunging = true;
         lungeTimer = 15;
         
+        // Counter-clinch logic
         if (opponent.isTelegraphing) {
             startStruggle();
             return;
@@ -241,8 +236,7 @@
         
         if (dist < 80) {
             opponent.x += (opponent.x > player.x) ? 150 : -150;
-            invincibilityFrames = 60; 
-            updateScore(5);
+            invincibilityFrames = 60; // 1s protect
             stateText.innerText = "TAKEDOWN!";
             setTimeout(() => { if(gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
         }
@@ -257,8 +251,10 @@
         targetMashes = Math.floor(Math.random() * 30) + 15;
         struggleTimer = 600; 
         
-        // Immediate -7 Penalty
-        updateScore(-7);
+        // REVERTED SCORING PENALTY
+        score -= 7;
+        if (score < 0) score = 0;
+        scoreText.innerText = Math.floor(score/60); // Match time-based UI
 
         currentMashText.innerText = currentMashes;
         targetMashText.innerText = targetMashes;
@@ -270,11 +266,10 @@
         if (escaped) {
             isStruggling = false;
             struggleOverlay.style.display = 'none';
-            stateText.innerText = "ESCAPED!";
+            stateText.innerText = "NEUTRAL";
             opponent.x += (opponent.x > player.x) ? 120 : -120;
             invincibilityFrames = 60; 
-            updateScore(20);
-            setTimeout(() => { if(gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
+            stallTimer = 0;
         } else {
             endGame("1-2-3! PINNED!");
         }
@@ -293,7 +288,7 @@
         if (sprawlCooldown > 0) sprawlCooldown--;
         if (invincibilityFrames > 0) invincibilityFrames--;
 
-        // Stalling
+        // Stall Warning Logic
         stallTimer++;
         if (stallTimer > 900) { 
             stallCalls++;
@@ -350,11 +345,15 @@
                 opponent.x += (opponent.x > player.x) ? 70 : -70;
                 sprawlCooldown = 300; 
                 invincibilityFrames = 30;
-                updateScore(5); // Reward for defensive move
+                stallTimer = 0; // Action resets stalling
             } else if (!isLunging) {
                 startStruggle();
             }
         }
+        
+        // REVERTED TO ORIGINAL TIME-BASED SCORING
+        score++;
+        if(score % 60 === 0) scoreText.innerText = Math.floor(score/60);
     }
 
     function draw() {
@@ -362,14 +361,19 @@
         ctx.fillStyle = "#2d4a3e";
         ctx.fillRect(0,0, canvas.width, canvas.height);
         
+        // Ring visual
         ctx.strokeStyle = "rgba(212, 175, 55, 0.5)";
         ctx.lineWidth = 8;
         ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 160, 0, Math.PI*2); ctx.stroke();
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI*2); ctx.stroke();
 
+        // Player Shadow/Invuln effect
         if (invincibilityFrames % 10 < 5) {
             ctx.drawImage(spriteOwen, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
         }
 
+        // Sprawl Cooldown Bar
         if (sprawlCooldown > 0) {
             ctx.fillStyle = "#444";
             ctx.fillRect(player.x - 20, player.y - 40, 40, 5);
