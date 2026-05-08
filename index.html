@@ -209,7 +209,6 @@
 <body>
 
 <div id="game-wrapper">
-
     <div id="ui-bar">
         <span>Score: <b id="score">0</b></span>
         <div id="score-indicator"></div>
@@ -218,16 +217,11 @@
     </div>
 
     <div id="main-stage">
-
         <div id="stall-warning">STALLING WARNING!</div>
 
         <div id="menu">
             <h1 style="text-align:center; color:white;">CHUD WRESTLING FRENZY</h1>
-
-            <p style="text-align:center; font-size:12px;">
-                Earn takedowns. Avoid getting pinned.
-            </p>
-
+            <p style="text-align:center; font-size:12px;">Earn takedowns. Avoid getting pinned.</p>
             <div style="display:flex; gap:10px; justify-content:center;">
                 <button onclick="startGame()">START MATCH</button>
                 <button onclick="openManual()">MANUAL</button>
@@ -235,723 +229,377 @@
         </div>
 
         <div id="manual-screen">
-
             <h2 style="text-align:center;">HOW TO PLAY</h2>
-
-            <p><b>WASD</b> = Move</p>
-            <p><b>E</b> = Shoot</p>
-            <p><b>H</b> = Sprawl</p>
-
+            <p><b>WASD</b> = Move | <b>E</b> = Shoot | <b>H</b> = Sprawl</p>
             <hr>
-
-            <p>
-                Get close and press E for takedowns.
-            </p>
-
-            <p>
-                If the opponent shoots, hold H to sprawl.
-            </p>
-
-            <p>
-                If caught, mash SPACE before time runs out.
-            </p>
-
-            <p>
-                The AI sometimes backs away to bait shots.
-            </p>
-
-            <p>
-                Two stalling calls = DQ.
-            </p>
-
+            <p>Get close and press E for takedowns.</p>
+            <p>If the opponent shoots, hold H to sprawl.</p>
+            <p>If caught, mash SPACE before time runs out.</p>
+            <p>Two stalling calls = DQ.</p>
             <button onclick="closeManual()">BACK</button>
-
         </div>
 
         <canvas id="gameCanvas" width="500" height="350"></canvas>
 
         <div id="struggle-overlay">
             <div id="mash-box">
-
                 <h3 style="margin:0; color:white;">NEAR FALL!</h3>
-
-                <p id="timer-display" style="color:white;">
-                    Escape in: 5s
-                </p>
-
+                <p id="timer-display" style="color:white;">Escape in: 5s</p>
                 <div style="font-size:2rem; font-weight:bold; color:white;">
-                    <span id="current-mashes">0</span> /
-                    <span id="target-mashes">?</span>
+                    <span id="current-mashes">0</span> / <span id="target-mashes">?</span>
                 </div>
-
-                <p style="font-size:10px; color:#aaa;">
-                    MASH SPACE
-                </p>
-
+                <p style="font-size:10px; color:#aaa;">MASH SPACE</p>
             </div>
         </div>
 
         <div id="game-over">
-
-            <h2 id="death-reason" class="pinned-text">
-                1-2-3! PINNED!
-            </h2>
-
+            <h2 id="death-reason" class="pinned-text">1-2-3! PINNED!</h2>
             <p id="final-score"></p>
-
             <table id="leaderboard">
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>Score</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Rank</th><th>Score</th></tr></thead>
                 <tbody id="leaderboard-body"></tbody>
             </table>
-
             <img id="lose-gif" src="owenthrewgif.gif">
-
             <button onclick="startGame()">REMATCH</button>
-
         </div>
-
     </div>
 
     <div id="footer">
-        <span class="key">WASD</span> Move |
-        <span class="key">E</span> Shot |
-        <span class="key">H</span> Sprawl
-        <br>
-        Takedowns +3 | Caught -3
+        <span class="key">WASD</span> Move | <span class="key">E</span> Shot | <span class="key">H</span> Sprawl
+        <br>Takedowns +3 | Caught -3
     </div>
-
 </div>
 
 <script>
-
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 const menu = document.getElementById('menu');
 const gameOverScreen = document.getElementById('game-over');
 const struggleOverlay = document.getElementById('struggle-overlay');
-
 const scoreText = document.getElementById('score');
 const scoreIndicator = document.getElementById('score-indicator');
-
 const stateText = document.getElementById('state');
 const difficultyText = document.getElementById('difficulty-text');
-
 const currentMashText = document.getElementById('current-mashes');
 const targetMashText = document.getElementById('target-mashes');
 const timerDisplay = document.getElementById('timer-display');
-
 const loseGif = document.getElementById('lose-gif');
 const stallWarningUI = document.getElementById('stall-warning');
 
-const spriteOwen = new Image();
-spriteOwen.src = 'black_wrestler_sprite.png';
+const spriteOwen = new Image(); spriteOwen.src = 'black_wrestler_sprite.png';
+const spriteOpponent = new Image(); spriteOpponent.src = 'red_wrestler_sprite.png';
+const iconAlert = new Image(); iconAlert.src = 'exclamation_sprite.png';
 
-const spriteOpponent = new Image();
-spriteOpponent.src = 'red_wrestler_sprite.png';
-
-const iconAlert = new Image();
-iconAlert.src = 'exclamation_sprite.png';
-
-let player;
-let opponent;
-
-let gameActive;
-let score;
-let animationId;
-
-let aiTimer;
-
-let isStruggling = false;
-let currentMashes = 0;
-let targetMashes = 0;
-let struggleTimer = 300;
-
-let spaceReleased = true;
-
-let isTakingShot = false;
-let shotTimer = 0;
-
-let stallTimer = 0;
-let stallCalls = 0;
-
-let sprawlCooldown = 0;
-let invincibilityFrames = 0;
-
-let baitCooldown = 0;
-
-let diffMult = 1.0;
+let player, opponent;
+let gameActive, score, animationId, aiTimer;
+let isStruggling = false, currentMashes = 0, targetMashes = 0, struggleTimer = 300;
+let spaceReleased = true, isTakingShot = false, shotTimer = 0;
+let stallTimer = 0, stallCalls = 0, sprawlCooldown = 0, invincibilityFrames = 0;
+let baitCooldown = 0, diffMult = 1.0;
 
 const keys = {};
 
 window.addEventListener('keydown', e => {
-
     if (!keys[e.code]) {
-
         if (e.code === 'Space' && isStruggling && spaceReleased) {
-
             currentMashes++;
-
             spaceReleased = false;
-
             currentMashText.innerText = currentMashes;
-
-            if (currentMashes >= targetMashes) {
-                endStruggle(true);
-            }
+            if (currentMashes >= targetMashes) endStruggle(true);
         }
-
-        if (e.code === 'KeyE' && !isStruggling && !isTakingShot && gameActive) {
-            attemptShot();
-        }
+        if (e.code === 'KeyE' && !isStruggling && !isTakingShot && gameActive) attemptShot();
     }
-
     keys[e.code] = true;
 });
 
 window.addEventListener('keyup', e => {
-
     keys[e.code] = false;
-
-    if (e.code === 'Space') {
-        spaceReleased = true;
-    }
+    if (e.code === 'Space') spaceReleased = true;
 });
 
-function openManual() {
-    document.getElementById('manual-screen').style.display = 'block';
-}
-
-function closeManual() {
-    document.getElementById('manual-screen').style.display = 'none';
-}
+function openManual() { document.getElementById('manual-screen').style.display = 'block'; }
+function closeManual() { document.getElementById('manual-screen').style.display = 'none'; }
 
 function triggerScorePop(val, isPositive) {
-
     scoreIndicator.innerText = (isPositive ? "+" : "") + val;
-
     scoreIndicator.style.color = isPositive ? "#D4AF37" : "#ff3333";
-
     scoreIndicator.style.opacity = "1";
-
     scoreIndicator.style.transform = "translateY(-25px)";
-
     setTimeout(() => {
-
         scoreIndicator.style.opacity = "0";
         scoreIndicator.style.transform = "translateY(0px)";
-
     }, 700);
 }
 
 function startGame() {
-
     menu.style.display = 'none';
     gameOverScreen.style.display = 'none';
     struggleOverlay.style.display = 'none';
-
     canvas.style.display = 'block';
-
     gameActive = true;
-
     isStruggling = false;
     isTakingShot = false;
-
     score = 0;
-
     aiTimer = 0;
-
     stallTimer = 0;
     stallCalls = 0;
-
     sprawlCooldown = 0;
     invincibilityFrames = 0;
-
     baitCooldown = 0;
-
     diffMult = 1.0;
-
     scoreText.innerText = "0";
-
     difficultyText.innerText = "Lvl 1";
-
     stateText.innerText = "NEUTRAL";
 
-    player = {
-        x: 100,
-        y: 175,
-        size: 50,
-        speed: 4,
-        shotRange: 85
-    };
-
-    opponent = {
-        x: 380,
-        y: 175,
-        size: 50,
-        speed: 2.2,
-        isTelegraphing: false,
-        telegraphFrames: 0
-    };
+    player = { x: 100, y: 175, size: 50, speed: 4, shotRange: 85 };
+    opponent = { x: 380, y: 175, size: 50, speed: 2.2, isTelegraphing: false, telegraphFrames: 0 };
 
     gameLoop();
 }
 
 function attemptShot() {
-
     let dx = player.x - opponent.x;
     let dy = player.y - opponent.y;
-
     let dist = Math.sqrt(dx*dx + dy*dy);
 
     if (dist < player.shotRange && !opponent.isTelegraphing) {
-
         invincibilityFrames = 60;
-
         stateText.innerText = "TAKEDOWN!";
-
         stallTimer = 0;
-
         score += 180;
-
         scoreText.innerText = Math.floor(score / 60);
-
         triggerScorePop(3, true);
-
         opponent.x += (opponent.x > player.x) ? 150 : -150;
-
         opponent.x = Math.max(50, Math.min(canvas.width - 50, opponent.x));
-
-        setTimeout(() => {
-            if (gameActive) {
-                stateText.innerText = "NEUTRAL";
-            }
-        }, 1000);
-
+        setTimeout(() => { if (gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
     } else {
-
         isTakingShot = true;
         shotTimer = 15;
     }
 }
 
 function startStruggle() {
-
     if (invincibilityFrames > 0 || !gameActive || isStruggling) return;
-
     isStruggling = true;
-
     currentMashes = 0;
-
     spaceReleased = true;
-
     let baseMashes = Math.floor(Math.random() * 10) + 12;
-
     targetMashes = Math.min(45, Math.floor(baseMashes * diffMult));
-
     struggleTimer = 300;
-
     score = Math.max(0, score - 180);
-
     scoreText.innerText = Math.floor(score / 60);
-
     triggerScorePop(-3, false);
-
     currentMashText.innerText = currentMashes;
-
     targetMashText.innerText = targetMashes;
-
     stateText.innerText = "NEAR FALL!";
-
     struggleOverlay.style.display = 'flex';
 }
 
 function endStruggle(escaped) {
-
     if (escaped) {
-
         isStruggling = false;
-
         struggleOverlay.style.display = 'none';
-
         stateText.innerText = "NEUTRAL";
-
         opponent.x += (opponent.x > player.x) ? 120 : -120;
-
         invincibilityFrames = 60;
-
         stallTimer = 0;
-
     } else {
-
         endGame("1-2-3! PINNED!");
     }
 }
 
 function update() {
-
     if (!gameActive) return;
 
     if (isStruggling) {
-
         struggleTimer--;
-
-        timerDisplay.innerText =
-            `Escape in: ${Math.ceil(struggleTimer / 60)}s`;
-
-        if (struggleTimer <= 0) {
-            endStruggle(false);
-        }
-
+        timerDisplay.innerText = `Escape in: ${Math.ceil(struggleTimer / 60)}s`;
+        if (struggleTimer <= 0) endStruggle(false);
         return;
     }
 
     diffMult = 1.0 + (Math.floor(score / 1200) * 0.15);
-
-    difficultyText.innerText =
-        `Lvl ${Math.floor(score / 1200) + 1}`;
+    difficultyText.innerText = `Lvl ${Math.floor(score / 1200) + 1}`;
 
     if (sprawlCooldown > 0) sprawlCooldown--;
-
     if (invincibilityFrames > 0) invincibilityFrames--;
-
     if (baitCooldown > 0) baitCooldown--;
 
+    // Player Movement
     if (isTakingShot) {
-
-        let angle = Math.atan2(
-            opponent.y - player.y,
-            opponent.x - player.x
-        );
-
+        let angle = Math.atan2(opponent.y - player.y, opponent.x - player.x);
         player.x += Math.cos(angle) * 12;
         player.y += Math.sin(angle) * 12;
-
         shotTimer--;
-
-        if (shotTimer <= 0) {
-            isTakingShot = false;
-        }
-
+        if (shotTimer <= 0) isTakingShot = false;
     } else {
-
-        if (keys['KeyW'] && player.y > 25)
-            player.y -= player.speed;
-
-        if (keys['KeyS'] && player.y < canvas.height - 25)
-            player.y += player.speed;
-
-        if (keys['KeyA'] && player.x > 25)
-            player.x -= player.speed;
-
-        if (keys['KeyD'] && player.x < canvas.width - 25)
-            player.x += player.speed;
+        if (keys['KeyW'] && player.y > 25) player.y -= player.speed;
+        if (keys['KeyS'] && player.y < canvas.height - 25) player.y += player.speed;
+        if (keys['KeyA'] && player.x > 25) player.x -= player.speed;
+        if (keys['KeyD'] && player.x < canvas.width - 25) player.x += player.speed;
     }
 
-    aiTimer++;
-
-    if (aiTimer > (150 / diffMult) && !opponent.isTelegraphing) {
-
-        opponent.isTelegraphing = true;
-
-        opponent.telegraphFrames =
-            Math.max(20, 45 - (diffMult * 2));
-
-        aiTimer = 0;
-    }
-
-    if (opponent.isTelegraphing) {
-
-        opponent.telegraphFrames--;
-
-        if (opponent.telegraphFrames <= 0) {
-
-            let angle = Math.atan2(
-                player.y - opponent.y,
-                player.x - opponent.x
-            );
-
-            let stopDistance = 30;
-
-            let targetX =
-                player.x - Math.cos(angle) * stopDistance;
-
-            let targetY =
-                player.y - Math.sin(angle) * stopDistance;
-
-            opponent.x = targetX;
-            opponent.y = targetY;
-
-            opponent.isTelegraphing = false;
-
-            let postDx = player.x - opponent.x;
-            let postDy = player.y - opponent.y;
-
-            let postDist =
-                Math.sqrt(postDx*postDx + postDy*postDy);
-
-            if (postDist < 45 && invincibilityFrames <= 0) {
-
-                if (keys['KeyH'] && sprawlCooldown <= 0) {
-
-                    opponent.x +=
-                        (opponent.x > player.x) ? 75 : -75;
-
-                    sprawlCooldown = 300;
-
-                    invincibilityFrames = 35;
-
-                    stallTimer = 0;
-
-                } else {
-
-                    startStruggle();
-                }
-            }
-        }
-
-    } else {
-
-        if (Math.random() < 0.002 && baitCooldown <= 0) {
-
-            let baitAngle = Math.atan2(
-                opponent.y - player.y,
-                opponent.x - player.x
-            );
-
-            opponent.x += Math.cos(baitAngle) * 80;
-            opponent.y += Math.sin(baitAngle) * 80;
-
-            baitCooldown = 240;
-
-        } else {
-
-            opponent.x +=
-                (player.x - opponent.x) / (60 / diffMult);
-
-            opponent.y +=
-                (player.y - opponent.y) / (60 / diffMult);
-        }
-    }
-
+    // AI LOGIC
     let dx = player.x - opponent.x;
     let dy = player.y - opponent.y;
-
     let dist = Math.sqrt(dx*dx + dy*dy);
 
-    if (dist < 35 &&
-        invincibilityFrames <= 0 &&
-        !isTakingShot) {
+    if (opponent.isTelegraphing) {
+        opponent.telegraphFrames--;
+        if (opponent.telegraphFrames <= 0) {
+            let angle = Math.atan2(dy, dx);
+            let enemyShotRange = 72; // Consistent range
 
-        if (keys['KeyH'] && sprawlCooldown <= 0) {
+            if (dist <= enemyShotRange + 20) {
+                // DASH AT PLAYER
+                let dashDist = 55 + diffMult * 5;
+                opponent.x += Math.cos(angle) * dashDist;
+                opponent.y += Math.sin(angle) * dashDist;
 
-            opponent.x +=
-                (opponent.x > player.x) ? 75 : -75;
-
-            sprawlCooldown = 300;
-
-            invincibilityFrames = 35;
-
-            stallTimer = 0;
-
+                // ❗ STOP EXACTLY AT PLAYER (NO OVERSHOOT)
+                let postDist = Math.sqrt((player.x - opponent.x)**2 + (player.y - opponent.y)**2);
+                if (postDist < 25) {
+                    opponent.x = player.x - Math.cos(angle) * 25;
+                    opponent.y = player.y - Math.sin(angle) * 25;
+                }
+                
+                // Hit Check
+                if (postDist < 45 && invincibilityFrames <= 0) {
+                    if (keys['KeyH'] && sprawlCooldown <= 0) {
+                        opponent.x += (opponent.x > player.x) ? 75 : -75;
+                        sprawlCooldown = 300;
+                        invincibilityFrames = 35;
+                        stallTimer = 0;
+                    } else {
+                        startStruggle();
+                    }
+                }
+            }
+            opponent.isTelegraphing = false;
+            aiTimer = 0;
+        }
+    } else {
+        // AI Idle / Chase / Backdash Logic
+        if (Math.random() < 0.003 * diffMult && baitCooldown <= 0) {
+            // BACKDASH (Bait)
+            let angle = Math.atan2(dy, dx);
+            let backdashSpeed = 75 + diffMult * 15; // Quicker backdash with level
+            opponent.x -= Math.cos(angle) * backdashSpeed;
+            opponent.y -= Math.sin(angle) * backdashSpeed;
+            baitCooldown = 180;
         } else {
+            // CHASE (Speed scales with level)
+            let chaseDivisor = Math.max(25, 60 - diffMult * 8);
+            opponent.x += dx / chaseDivisor;
+            opponent.y += dy / chaseDivisor;
+        }
 
+        aiTimer++;
+        if (aiTimer > (140 / diffMult) && dist < 120) {
+            opponent.isTelegraphing = true;
+            opponent.telegraphFrames = Math.max(20, 45 - diffMult * 2);
+        }
+    }
+
+    // Collision Check (Passive)
+    if (dist < 35 && invincibilityFrames <= 0 && !isTakingShot && !opponent.isTelegraphing) {
+        if (keys['KeyH'] && sprawlCooldown <= 0) {
+            opponent.x += (opponent.x > player.x) ? 75 : -75;
+            sprawlCooldown = 300;
+            invincibilityFrames = 35;
+        } else {
             startStruggle();
         }
     }
 
+    // Stalling
     stallTimer++;
-
     if (stallTimer > 900) {
-
         stallCalls++;
-
         stallTimer = 0;
-
-        if (stallCalls >= 2) {
-
-            endGame("DQ: STALLING!");
-
-        } else {
-
+        if (stallCalls >= 2) endGame("DQ: STALLING!");
+        else {
             stallWarningUI.style.display = 'block';
-
-            setTimeout(() => {
-
-                stallWarningUI.style.display = 'none';
-
-            }, 2000);
+            setTimeout(() => { stallWarningUI.style.display = 'none'; }, 2000);
         }
     }
 
     score++;
-
-    if (score % 60 === 0) {
-        scoreText.innerText = Math.floor(score / 60);
-    }
+    if (score % 60 === 0) scoreText.innerText = Math.floor(score / 60);
 }
 
 function draw() {
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     ctx.fillStyle = "#b22222";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Mat Lines
     ctx.strokeStyle = "rgba(255,255,255,0.4)";
     ctx.lineWidth = 6;
-
-    ctx.beginPath();
-    ctx.arc(canvas.width/2, canvas.height/2, 160, 0, Math.PI*2);
-    ctx.stroke();
-
+    ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 160, 0, Math.PI*2); ctx.stroke();
     ctx.lineWidth = 2;
-
-    ctx.beginPath();
-    ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI*2);
-    ctx.stroke();
+    ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI*2); ctx.stroke();
 
     if (!isStruggling && gameActive) {
-
         ctx.strokeStyle = "rgba(255,255,255,0.2)";
-        ctx.lineWidth = 2;
-
         ctx.setLineDash([5,5]);
-
-        ctx.beginPath();
-
-        ctx.arc(
-            player.x,
-            player.y,
-            player.shotRange,
-            0,
-            Math.PI*2
-        );
-
-        ctx.stroke();
-
+        ctx.beginPath(); ctx.arc(player.x, player.y, player.shotRange, 0, Math.PI*2); ctx.stroke();
         ctx.setLineDash([]);
     }
 
     if (invincibilityFrames % 10 < 5) {
-
-        ctx.drawImage(
-            spriteOwen,
-            player.x - player.size/2,
-            player.y - player.size/2,
-            player.size,
-            player.size
-        );
+        ctx.drawImage(spriteOwen, player.x - 25, player.y - 25, 50, 50);
     }
-
-    ctx.drawImage(
-        spriteOpponent,
-        opponent.x - opponent.size/2,
-        opponent.y - opponent.size/2,
-        opponent.size,
-        opponent.size
-    );
+    ctx.drawImage(spriteOpponent, opponent.x - 25, opponent.y - 25, 50, 50);
 
     if (opponent.isTelegraphing) {
-
-        ctx.drawImage(
-            iconAlert,
-            opponent.x - 15,
-            opponent.y - 55,
-            30,
-            30
-        );
+        ctx.drawImage(iconAlert, opponent.x - 15, opponent.y - 55, 30, 30);
     }
 
     if (keys['KeyH'] && sprawlCooldown <= 0) {
-
         ctx.strokeStyle = "#fff";
         ctx.lineWidth = 3;
-
-        ctx.beginPath();
-
-        ctx.arc(player.x, player.y, 35, 0, Math.PI*2);
-
-        ctx.stroke();
+        ctx.beginPath(); ctx.arc(player.x, player.y, 35, 0, Math.PI*2); ctx.stroke();
     }
 }
 
 function gameLoop() {
-
     if (!gameActive) return;
-
     update();
     draw();
-
     animationId = requestAnimationFrame(gameLoop);
 }
 
 function saveScore(newScore) {
-
-    let highScores =
-        JSON.parse(localStorage.getItem('owenHighScores')) || [];
-
+    let highScores = JSON.parse(localStorage.getItem('owenHighScores')) || [];
     highScores.push(newScore);
-
     highScores.sort((a,b) => b - a);
-
     highScores = highScores.slice(0, 10);
-
-    localStorage.setItem(
-        'owenHighScores',
-        JSON.stringify(highScores)
-    );
-
+    localStorage.setItem('owenHighScores', JSON.stringify(highScores));
     displayLeaderboard(highScores);
 }
 
 function displayLeaderboard(scores) {
-
-    const tbody =
-        document.getElementById('leaderboard-body');
-
+    const tbody = document.getElementById('leaderboard-body');
     tbody.innerHTML = '';
-
     scores.forEach((s, i) => {
-
-        const row =
-            `<tr><td>#${i+1}</td><td>${s}</td></tr>`;
-
-        tbody.innerHTML += row;
+        tbody.innerHTML += `<tr><td>#${i+1}</td><td>${s}</td></tr>`;
     });
 }
 
 function endGame(reason) {
-
     gameActive = false;
-
     cancelAnimationFrame(animationId);
-
     canvas.style.display = 'none';
-
     struggleOverlay.style.display = 'none';
-
     const finalS = Math.floor(score / 60);
-
-    document.getElementById('death-reason').innerText =
-        reason;
-
-    document.getElementById('final-score').innerText =
-        "Final Score: " + finalS;
-
+    document.getElementById('death-reason').innerText = reason;
+    document.getElementById('final-score').innerText = "Final Score: " + finalS;
     saveScore(finalS);
-
-    loseGif.src =
-        "owenthrewgif.gif?t=" + new Date().getTime();
-
+    loseGif.src = "owenthrewgif.gif?t=" + new Date().getTime();
     gameOverScreen.style.display = 'flex';
 }
-
 </script>
 
 </body>
