@@ -237,9 +237,7 @@
             <p><b>H</b> = Sprawl</p>
             <hr>
             <p>Get close and press E for takedowns.</p>
-            <p>If the opponent shoots, hold H to sprawl.</p>
-            <p>If caught, mash SPACE before time runs out.</p>
-            <p>The AI sometimes backs away to bait shots.</p>
+            <p>Collect Multipliers (2x, 3x, 5x, 10x) to boost score!</p>
             <p>Two stalling calls = DQ.</p>
             <button onclick="closeManual()">BACK</button>
         </div>
@@ -296,12 +294,22 @@ const timerDisplay = document.getElementById('timer-display');
 const loseGif = document.getElementById('lose-gif');
 const stallWarningUI = document.getElementById('stall-warning');
 
+// SPRITES
 const spriteOwen = new Image();
 spriteOwen.src = 'black_wrestler_sprite.png';
 const spriteOpponent = new Image();
 spriteOpponent.src = 'red_wrestler_sprite.png';
 const iconAlert = new Image();
 iconAlert.src = 'exclamation_sprite.png';
+
+// MULTIPLIER SPRITES (Updated Filenames)
+const colSprites = {
+    2: new Image(), 3: new Image(), 5: new Image(), 10: new Image()
+};
+colSprites[2].src = '2x.png';
+colSprites[3].src = '3x.png';
+colSprites[5].src = '5x.png';
+colSprites[10].src = '10x.png';
 
 let player, opponent, gameActive, score, animationId, aiTimer;
 let isStruggling = false;
@@ -318,9 +326,12 @@ let invincibilityFrames = 0;
 let baitCooldown = 0;
 let diffMult = 1.0;
 
-// CONSTANTS FOR BALANCE
+// ITEM SYSTEM
+let collectibles = [];
+let activeMultipliers = []; 
+
 const STATIC_SHOT_RANGE = 85; 
-const MIN_AI_ATTACK_DELAY = 100; // AI must wait at least ~1.6s between attacks
+const MIN_AI_ATTACK_DELAY = 100;
 
 const keys = {};
 
@@ -358,6 +369,14 @@ function triggerScorePop(val, isPositive) {
     }, 700);
 }
 
+// SCORING LOGIC
+function addPoints(base) {
+    // Multiplies the base points by every active multiplier currently held
+    let totalMult = activeMultipliers.reduce((acc, m) => acc * m.multiplier, 1);
+    score += (base * totalMult);
+    scoreText.innerText = Math.floor(score / 60);
+}
+
 function startGame() {
     menu.style.display = 'none';
     gameOverScreen.style.display = 'none';
@@ -374,6 +393,8 @@ function startGame() {
     invincibilityFrames = 0;
     baitCooldown = 0;
     diffMult = 1.0;
+    collectibles = [];
+    activeMultipliers = [];
     scoreText.innerText = "0";
     difficultyText.innerText = "Lvl 1";
     stateText.innerText = "NEUTRAL";
@@ -400,9 +421,10 @@ function attemptShot() {
         invincibilityFrames = 60;
         stateText.innerText = "TAKEDOWN!";
         stallTimer = 0;
-        score += 180;
-        scoreText.innerText = Math.floor(score / 60);
+        
+        addPoints(180); // Takedown base value is 180 (3 pts)
         triggerScorePop(3, true);
+
         opponent.x += (opponent.x > player.x) ? 150 : -150;
         opponent.x = Math.max(50, Math.min(canvas.width - 50, opponent.x));
         setTimeout(() => { if (gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
@@ -420,9 +442,12 @@ function startStruggle() {
     let baseMashes = Math.floor(Math.random() * 10) + 12;
     targetMashes = Math.min(45, Math.floor(baseMashes * diffMult));
     struggleTimer = 300;
+
+    // Caught penalties are not multiplied
     score = Math.max(0, score - 180);
     scoreText.innerText = Math.floor(score / 60);
     triggerScorePop(-3, false);
+
     currentMashText.innerText = currentMashes;
     targetMashText.innerText = targetMashes;
     stateText.innerText = "NEAR FALL!";
@@ -442,6 +467,38 @@ function endStruggle(escaped) {
     }
 }
 
+function updateItems() {
+    // Spawning chance scales with level
+    let spawnChance = 0.0015 * diffMult;
+    if (collectibles.length < 3 && Math.random() < spawnChance) {
+        let r = Math.random();
+        let m = 2;
+        if (r > 0.98) m = 10;      // Rare 10x
+        else if (r > 0.90) m = 5;  // Rare 5x
+        else if (r > 0.75) m = 3;  // Uncommon 3x
+
+        collectibles.push({
+            x: Math.random() * (canvas.width - 60) + 30,
+            y: Math.random() * (canvas.height - 60) + 30,
+            multiplier: m
+        });
+    }
+
+    // Pick up collision
+    collectibles = collectibles.filter(item => {
+        let dx = player.x - item.x;
+        let dy = player.y - item.y;
+        if (Math.sqrt(dx*dx + dy*dy) < 40) {
+            activeMultipliers.push({ multiplier: item.multiplier, expires: Date.now() + 20000 });
+            return false;
+        }
+        return true;
+    });
+
+    // Cleanup expired buffs
+    activeMultipliers = activeMultipliers.filter(m => m.expires > Date.now());
+}
+
 function update() {
     if (!gameActive) return;
     if (isStruggling) {
@@ -451,9 +508,10 @@ function update() {
         return;
     }
 
-    // SPEED SCALING CAP
     diffMult = Math.min(2.5, 1.0 + (Math.floor(score / 1200) * 0.15));
     difficultyText.innerText = `Lvl ${Math.floor(score / 1200) + 1}`;
+
+    updateItems();
 
     if (sprawlCooldown > 0) sprawlCooldown--;
     if (invincibilityFrames > 0) invincibilityFrames--;
@@ -472,13 +530,11 @@ function update() {
         if (keys['KeyD'] && player.x < canvas.width - 25) player.x += player.speed;
     }
 
-    // AI BRAIN - FREQUENCY CONTROL
     aiTimer++;
     let attackThreshold = Math.max(MIN_AI_ATTACK_DELAY, 180 / diffMult);
 
     if (aiTimer > attackThreshold && !opponent.isTelegraphing) {
         opponent.isTelegraphing = true;
-        // Keep telegraph frames at a reactable minimum
         opponent.telegraphFrames = Math.max(25, 45 - (diffMult * 3));
         aiTimer = 0;
     }
@@ -490,12 +546,10 @@ function update() {
             let dy = player.y - opponent.y;
             let dist = Math.sqrt(dx*dx + dy*dy);
 
-            // USE STATIC SHOT RANGE
             if (dist <= STATIC_SHOT_RANGE) {
                 let angle = Math.atan2(dy, dx);
-                let stopDistance = 30;
-                opponent.x = player.x - Math.cos(angle) * stopDistance;
-                opponent.y = player.y - Math.sin(angle) * stopDistance;
+                opponent.x = player.x - Math.cos(angle) * 30;
+                opponent.y = player.y - Math.sin(angle) * 30;
 
                 let postDist = Math.sqrt(Math.pow(player.x - opponent.x, 2) + Math.pow(player.y - opponent.y, 2));
                 if (postDist < 45 && invincibilityFrames <= 0) {
@@ -510,7 +564,6 @@ function update() {
                 }
             } else {
                 stateText.innerText = "OPPONENT MISSED!";
-                // PUNISH AI FOR MISSING (gives player more time to shoot)
                 aiTimer = -60; 
                 setTimeout(() => { if(gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
             }
@@ -528,11 +581,9 @@ function update() {
         }
     }
 
-    // Passive collision check
     let dx = player.x - opponent.x;
     let dy = player.y - opponent.y;
-    let dist = Math.sqrt(dx*dx + dy*dy);
-    if (dist < 35 && invincibilityFrames <= 0 && !isTakingShot) {
+    if (Math.sqrt(dx*dx + dy*dy) < 35 && invincibilityFrames <= 0 && !isTakingShot) {
         if (keys['KeyH'] && sprawlCooldown <= 0) {
             opponent.x += (opponent.x > player.x) ? 75 : -75;
             sprawlCooldown = 300;
@@ -547,15 +598,15 @@ function update() {
     if (stallTimer > 900) {
         stallCalls++;
         stallTimer = 0;
-        if (stallCalls >= 2) {
-            endGame("DQ: STALLING!");
-        } else {
+        if (stallCalls >= 2) endGame("DQ: STALLING!");
+        else {
             stallWarningUI.style.display = 'block';
             setTimeout(() => { stallWarningUI.style.display = 'none'; }, 2000);
         }
     }
-    score++;
-    if (score % 60 === 0) scoreText.innerText = Math.floor(score / 60);
+    
+    // Multiplied passive score
+    addPoints(1); 
 }
 
 function draw() {
@@ -567,10 +618,11 @@ function draw() {
     ctx.beginPath();
     ctx.arc(canvas.width/2, canvas.height/2, 160, 0, Math.PI*2);
     ctx.stroke();
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI*2);
-    ctx.stroke();
+
+    // Draw Items
+    collectibles.forEach(item => {
+        ctx.drawImage(colSprites[item.multiplier], item.x - 15, item.y - 15, 30, 30);
+    });
 
     if (!isStruggling && gameActive) {
         ctx.strokeStyle = "rgba(255,255,255,0.2)";
@@ -596,6 +648,14 @@ function draw() {
         ctx.beginPath();
         ctx.arc(player.x, player.y, 35, 0, Math.PI*2);
         ctx.stroke();
+    }
+
+    // MULTIPLIER UI
+    let combined = activeMultipliers.reduce((acc, m) => acc * m.multiplier, 1);
+    if (combined > 1) {
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 18px Arial";
+        ctx.fillText(`${combined}X MULTIPLIER ACTIVE!`, 15, 30);
     }
 }
 
