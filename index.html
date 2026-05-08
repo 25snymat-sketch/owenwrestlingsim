@@ -41,7 +41,7 @@
             position: relative;
             width: 100%;
             height: 350px;
-            background: radial-gradient(circle, #2d4a3e 60%, #162e24 100%);
+            background: #2d4a3e;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -57,7 +57,7 @@
             align-items: center;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             z-index: 10;
         }
 
@@ -68,6 +68,20 @@
             text-align: center;
             border-radius: 10px;
             animation: pulse 0.5s infinite alternate;
+        }
+
+        #stall-warning {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            display: none;
+            z-index: 5;
         }
 
         @keyframes pulse {
@@ -84,7 +98,7 @@
             padding: 10px; 
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             position: absolute;
             top: 0;
             left: 0;
@@ -96,26 +110,10 @@
             max-width: 450px; 
             border: 4px solid #D4AF37; 
             border-radius: 10px; 
-            box-shadow: 0 0 30px rgba(212, 175, 55, 0.6);
             margin: 10px 0;
         }
 
-        .pinned-text {
-            color: #ff4d4d; 
-            margin: 0; 
-            font-size: 2.5rem; 
-            font-weight: 900;
-            text-shadow: 2px 2px 0px #000;
-            animation: shake 0.2s infinite;
-        }
-
-        @keyframes shake {
-            0% { transform: translate(1px, 1px); }
-            25% { transform: translate(-2px, -1px); }
-            50% { transform: translate(2px, 0px); }
-            75% { transform: translate(-1px, 2px); }
-            100% { transform: translate(1px, -1px); }
-        }
+        .pinned-text { color: #ff4d4d; margin: 0; font-size: 2.5rem; font-weight: 900; text-shadow: 2px 2px 0px #000; }
 
         #footer {
             background: #0a0a0a;
@@ -127,18 +125,7 @@
         }
 
         .key { color: #fff; background: #444; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
-
-        button {
-            padding: 12px 24px;
-            background: #D4AF37;
-            color: #000;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            border-radius: 5px;
-            font-size: 1rem;
-            transition: transform 0.2s;
-        }
+        button { padding: 12px 24px; background: #D4AF37; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -146,10 +133,13 @@
 <div id="game-wrapper">
     <div id="ui-bar">
         <span>Score: <b id="score">0</b></span>
+        <span id="stall-indicator" style="color: #ff4d4d;"></span>
         <span id="state">NEUTRAL</span>
     </div>
 
     <div id="main-stage">
+        <div id="stall-warning">STALLING WARNING!</div>
+        
         <div id="menu">
             <h1 style="text-align:center;">OWEN WRESTLING</h1>
             <button onclick="startGame()">START MATCH</button>
@@ -159,25 +149,25 @@
 
         <div id="struggle-overlay">
             <div id="mash-box">
-                <h3 style="margin: 0; color: #ff4d4d;">PINNED!</h3>
-                <p id="timer-display" style="color: #fff; margin: 5px 0;">Time Remaining: 10s</p>
+                <h3 style="margin: 0; color: #ff4d4d;">NEAR FALL!</h3>
+                <p id="timer-display" style="color: #fff; margin: 5px 0;">Escape in: 10s</p>
                 <div style="font-size: 2rem; font-weight: bold;">
                     <span id="current-mashes">0</span> / <span id="target-mashes">?</span>
                 </div>
-                <p style="font-size: 10px; color: #aaa; margin-top: 10px;">PRESS SPACE RAPIDLY (NO HOLDING)</p>
+                <p style="font-size: 10px; color: #aaa; margin-top: 10px;">MASH SPACE (NO HOLDING)</p>
             </div>
         </div>
 
         <div id="game-over">
-            <h2 class="pinned-text">1-2-3! PINNED!</h2>
+            <h2 id="death-reason" class="pinned-text">1-2-3! PINNED!</h2>
             <img id="lose-gif" src="owenthrewgif.gif" alt="Funny Lose GIF">
             <button onclick="startGame()" style="margin-top: 5px;">REMATCH</button>
         </div>
     </div>
 
     <div id="footer">
-        <span class="key">WASD</span> Move | <span class="key">E</span> Takedown Attack<br>
-        <span class="key">H</span> Sprawl (Defense) | <span class="key">SPACE</span> Kick Out
+        <span class="key">WASD</span> Move | <span class="key">E</span> Lunge Takedown | <span class="key">H</span> Sprawl<br>
+        Don't Stall! Move or Attack to keep the ref happy.
     </div>
 </div>
 
@@ -193,33 +183,34 @@
     const targetMashText = document.getElementById('target-mashes');
     const timerDisplay = document.getElementById('timer-display');
     const loseGif = document.getElementById('lose-gif');
+    const stallWarningUI = document.getElementById('stall-warning');
+    const stallIndicator = document.getElementById('stall-indicator');
 
     const spriteOwen = new Image(); spriteOwen.src = 'black_wrestler_sprite.png';
     const spriteOpponent = new Image(); spriteOpponent.src = 'red_wrestler_sprite.png';
     const iconAlert = new Image(); iconAlert.src = 'exclamation_sprite.png';
 
     let player, opponent, gameActive, score, animationId, aiTimer;
-    let isStruggling = false;
-    let currentMashes = 0;
-    let targetMashes = 0;
-    let struggleTimer = 600; // 10 seconds at 60fps
+    let isStruggling = false, currentMashes = 0, targetMashes = 0, struggleTimer = 600;
+    let spaceReleased = true, isLunging = false, lungeTimer = 0;
+    
+    // Stalling Variables
+    let stallTimer = 0; 
+    let stallCalls = 0;
+    let lastActionScore = 0;
+
     const keys = {};
 
-    // For Anti-Hold logic
-    let spaceReleased = true;
-
     window.addEventListener('keydown', e => {
-        if (!keys[e.code]) { // Initial press
+        if (!keys[e.code]) {
             if (e.code === 'Space' && isStruggling && spaceReleased) {
                 currentMashes++;
-                spaceReleased = false; // Block further increment until release
+                spaceReleased = false;
                 currentMashText.innerText = currentMashes;
                 if (currentMashes >= targetMashes) endStruggle(true);
             }
-            
-            // Offensive Takedown logic
-            if (e.code === 'KeyE' && !isStruggling && gameActive) {
-                checkTakedown();
+            if (e.code === 'KeyE' && !isStruggling && !isLunging && gameActive) {
+                attemptLunge();
             }
         }
         keys[e.code] = true;
@@ -233,8 +224,7 @@
     function getRandomTarget() {
         const roll = Math.random();
         if (roll < 0.7) return Math.floor(Math.random() * 21) + 20; 
-        if (roll < 0.85) return Math.floor(Math.random() * 19) + 1;
-        return Math.floor(Math.random() * 35) + 41;
+        return Math.floor(Math.random() * 50) + 20;
     }
 
     function startGame() {
@@ -245,11 +235,15 @@
         
         gameActive = true;
         isStruggling = false;
+        isLunging = false;
         score = 0;
         aiTimer = 0;
+        stallTimer = 0;
+        stallCalls = 0;
+        lastActionScore = 0;
+        stallIndicator.innerText = "";
         scoreText.innerText = score;
         stateText.innerText = "NEUTRAL";
-        stateText.style.color = "#D4AF37";
         
         player = { x: 100, y: 175, size: 50, speed: 4 };
         opponent = { x: 380, y: 175, size: 50, speed: 2.2, isTelegraphing: false, telegraphFrames: 0 };
@@ -257,30 +251,41 @@
         gameLoop();
     }
 
-    function startStruggle() {
-        isStruggling = true;
-        currentMashes = 0;
-        spaceReleased = true;
-        targetMashes = getRandomTarget();
-        struggleTimer = 600; // Exactly 10 seconds
+    function attemptLunge() {
+        isLunging = true;
+        lungeTimer = 15; // 15 frames of high-speed dash
         
-        currentMashText.innerText = currentMashes;
-        targetMashText.innerText = targetMashes;
-        stateText.innerText = "PINNED!";
-        stateText.style.color = "#ff4d4d";
-        struggleOverlay.style.display = 'flex';
-    }
+        // IF LUNGING WHILE OPPONENT HAS EXCLAMATION: INSTANT NEAR FALL
+        if (opponent.isTelegraphing) {
+            startStruggle();
+            return;
+        }
 
-    function checkTakedown() {
+        // Check for normal takedown success
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
         let dist = Math.sqrt(dx*dx + dy*dy);
-        
-        if (dist < 70) {
-            // Success! We initiate the struggle but we are the one pinning them?
-            // For now, mashing represents escaping their counter-grapple.
-            startStruggle();
+        if (dist < 80) {
+            opponent.x += (opponent.x > player.x) ? 150 : -150;
+            score += 200;
+            stateText.innerText = "TAKEDOWN!";
+            setTimeout(() => { if(gameActive) stateText.innerText = "NEUTRAL"; }, 1000);
         }
+    }
+
+    function startStruggle() {
+        isStruggling = true;
+        isLunging = false;
+        currentMashes = 0;
+        spaceReleased = true;
+        targetMashes = getRandomTarget();
+        struggleTimer = 600; 
+        
+        currentMashText.innerText = currentMashes;
+        targetMashText.innerText = targetMashes;
+        stateText.innerText = "NEAR FALL!";
+        stateText.style.color = "#ff4d4d";
+        struggleOverlay.style.display = 'flex';
     }
 
     function endStruggle(escaped) {
@@ -289,11 +294,11 @@
             struggleOverlay.style.display = 'none';
             stateText.innerText = "NEUTRAL";
             stateText.style.color = "#D4AF37";
-            // Repel opponent
             opponent.x += (opponent.x > player.x) ? 120 : -120;
-            score += 500; // Bonus for escaping
+            score += 100;
+            stallTimer = 0; // Escaping resets stall
         } else {
-            endGame();
+            endGame("1-2-3! PINNED!");
         }
     }
 
@@ -302,20 +307,51 @@
 
         if (isStruggling) {
             struggleTimer--;
-            timerDisplay.innerText = `Time Remaining: ${Math.ceil(struggleTimer/60)}s`;
+            timerDisplay.innerText = `Escape in: ${Math.ceil(struggleTimer/60)}s`;
             if (struggleTimer <= 0) endStruggle(false);
             return;
         }
 
-        // Player Movement
-        if (keys['KeyW'] && player.y > player.size/2) player.y -= player.speed;
-        if (keys['KeyS'] && player.y < canvas.height - player.size/2) player.y += player.speed;
-        if (keys['KeyA'] && player.x > player.size/2) player.x -= player.speed;
-        if (keys['KeyD'] && player.x < canvas.width - player.size/2) player.x += player.speed;
+        // Stalling Logic: 15 seconds (900 frames)
+        stallTimer++;
+        if (score > lastActionScore + 10) { // If player is gaining points (moving/playing)
+            stallTimer = 0;
+            lastActionScore = score;
+            stallWarningUI.style.display = 'none';
+        }
 
-        // AI AI AI
+        if (stallTimer > 900) { // 15 seconds
+            stallCalls++;
+            stallTimer = 0;
+            if (stallCalls >= 2) {
+                endGame("DQ: STALLING!");
+            } else {
+                stallWarningUI.style.display = 'block';
+                stallIndicator.innerText = "⚠ STALL CALL";
+                setTimeout(() => { stallWarningUI.style.display = 'none'; }, 2000);
+            }
+        }
+
+        // Lunge physics
+        if (isLunging) {
+            let angle = Math.atan2(opponent.y - player.y, opponent.x - player.x);
+            player.x += Math.cos(angle) * 12;
+            player.y += Math.sin(angle) * 12;
+            lungeTimer--;
+            if (lungeTimer <= 0) isLunging = false;
+        }
+
+        // Standard Movement
+        if (!isLunging) {
+            if (keys['KeyW'] && player.y > 25) player.y -= player.speed;
+            if (keys['KeyS'] && player.y < canvas.height - 25) player.y += player.speed;
+            if (keys['KeyA'] && player.x > 25) player.x -= player.speed;
+            if (keys['KeyD'] && player.x < canvas.width - 25) player.x += player.speed;
+        }
+
+        // AI Logic
         aiTimer++;
-        if (aiTimer > 120 && !opponent.isTelegraphing) {
+        if (aiTimer > 150 && !opponent.isTelegraphing) {
             opponent.isTelegraphing = true;
             opponent.telegraphFrames = 50; 
             aiTimer = 0;
@@ -330,24 +366,20 @@
                 opponent.isTelegraphing = false;
             }
         } else {
-            let dx = player.x - opponent.x;
-            let dy = player.y - opponent.y;
-            opponent.x += (dx / 50); 
-            opponent.y += (dy / 50);
+            opponent.x += (player.x - opponent.x) / 60;
+            opponent.y += (player.y - opponent.y) / 60;
         }
 
-        // Collision & Sprawl Logic
+        // Collision
         let dx = player.x - opponent.x;
         let dy = player.y - opponent.y;
         let dist = Math.sqrt(dx*dx + dy*dy);
 
         if (dist < 35) {
-            // If player is holding H (Sprawl), they bounce off
             if (keys['KeyH']) {
-                opponent.x += (opponent.x > player.x) ? 40 : -40;
-                opponent.y += (opponent.y > player.y) ? 40 : -40;
-                score += 10;
-            } else {
+                opponent.x += (opponent.x > player.x) ? 50 : -50;
+                score += 50;
+            } else if (!isLunging) {
                 startStruggle();
             }
         }
@@ -358,6 +390,31 @@
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // DRAW MAT
+        ctx.fillStyle = "#2d4a3e";
+        ctx.fillRect(0,0, canvas.width, canvas.height);
+        
+        // Outer Circle
+        ctx.strokeStyle = "rgba(212, 175, 55, 0.5)";
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.arc(canvas.width/2, canvas.height/2, 160, 0, Math.PI*2);
+        ctx.stroke();
+
+        // Inner Circle
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI*2);
+        ctx.stroke();
+
+        // Line
+        ctx.beginPath();
+        ctx.moveTo(canvas.width/2 - 40, canvas.height/2);
+        ctx.lineTo(canvas.width/2 + 40, canvas.height/2);
+        ctx.stroke();
+
+        // Characters
         ctx.drawImage(spriteOwen, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
         ctx.drawImage(spriteOpponent, opponent.x - opponent.size/2, opponent.y - opponent.size/2, opponent.size, opponent.size);
 
@@ -365,13 +422,10 @@
             ctx.drawImage(iconAlert, opponent.x - 15, opponent.y - 55, 30, 30);
         }
         
-        // Show Sprawl visual
-        if (keys['KeyH'] && !isStruggling) {
-            ctx.strokeStyle = "cyan";
+        if (keys['KeyH']) {
+            ctx.strokeStyle = "#00ffff";
             ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, 30, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.beginPath(); ctx.arc(player.x, player.y, 35, 0, Math.PI*2); ctx.stroke();
         }
     }
 
@@ -382,15 +436,13 @@
         animationId = requestAnimationFrame(gameLoop);
     }
 
-    function endGame() {
+    function endGame(reason) {
         gameActive = false;
         cancelAnimationFrame(animationId);
         canvas.style.display = 'none';
         struggleOverlay.style.display = 'none';
-        
-        // RESET GIF TO BEGINNING by appending a unique string to the URL
+        document.getElementById('death-reason').innerText = reason;
         loseGif.src = "owenthrewgif.gif?t=" + new Date().getTime();
-        
         gameOverScreen.style.display = 'flex';
     }
 </script>
